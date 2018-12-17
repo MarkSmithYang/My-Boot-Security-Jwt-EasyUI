@@ -1,3 +1,4 @@
-# Boot-Security-Jwt-Demo
+# Boot-Security-Jwt-Demo2
 SpringBoot整合SpringSecurity和Jwt的完善demo
 1.这个springboot整合spring security和jwt的完整版
+2.这个是前后端没有分离的版本
