@@ -7,7 +7,6 @@ import org.springframework.security.config.annotation.method.configuration.Enabl
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
 import org.springframework.web.servlet.config.annotation.EnableWebMvc;
-import springfox.documentation.swagger2.annotations.EnableSwagger2;
 
 @EnableWebMvc
 @SpringBootApplication

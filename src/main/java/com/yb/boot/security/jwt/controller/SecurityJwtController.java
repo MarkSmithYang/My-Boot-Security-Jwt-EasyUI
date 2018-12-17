@@ -1,12 +1,11 @@
 package com.yb.boot.security.jwt.controller;
 
-import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.auth.tools.AntiViolenceCheckTools;
 import com.yb.boot.security.jwt.auth.tools.JwtTokenTools;
-import com.yb.boot.security.jwt.common.CaptchaParam;
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.common.JwtProperties;
 import com.yb.boot.security.jwt.common.ResultInfo;
+import com.yb.boot.security.jwt.model.SysUser;
 import com.yb.boot.security.jwt.request.RefreshToken;
 import com.yb.boot.security.jwt.request.UserRegister;
 import com.yb.boot.security.jwt.request.UserRequest;
@@ -16,37 +15,26 @@ import com.yb.boot.security.jwt.service.SecurityJwtService;
 import com.yb.boot.security.jwt.utils.LoginUserUtils;
 import com.yb.boot.security.jwt.utils.RealIpGetUtils;
 import com.yb.boot.security.jwt.utils.VerifyCodeUtils;
-import io.swagger.annotations.Api;
-import io.swagger.annotations.ApiOperation;
-import io.swagger.annotations.ApiParam;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.security.access.prepost.PostFilter;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
-import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-import redis.clients.util.IOUtils;
-import sun.nio.ch.IOUtil;
 
-import javax.annotation.security.PermitAll;
-import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import javax.swing.text.View;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
-import java.io.FileNotFoundException;
-import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -58,7 +46,6 @@ import java.util.concurrent.TimeUnit;
  * Description:控制层代码
  * date 2018/11/30
  */
-@Api("我的controller测试")
 @Controller
 @Validated
 @CrossOrigin//处理跨域
@@ -76,11 +63,7 @@ public class SecurityJwtController {
     @Autowired
     private SecurityJwtService securityJwtService;
     @Autowired
-    private BCryptPasswordEncoder bCryptPasswordEncoder;
-    @Autowired
     private RedisTemplate<String, Serializable> redisTemplate;
-
-    private final String CODE_HEADER = "ae81cac2";
 
     @GetMapping("/toLogin")
     public String toLogin() {
@@ -98,25 +81,25 @@ public class SecurityJwtController {
         return "/index";
     }
 
-    @PreAuthorize("isAuthenticated()")
-    @GetMapping("/queryUserList")
-    public String queryUserList() {
-        return "/index";
-    }
-
-//    @PreAuthorize("isAuthenticated()")
+    //    @PreAuthorize("isAuthenticated()")
     @PostMapping("/addUser")
     public String addUser(@Valid UserRegister userRegister) {
         securityJwtService.addUser(userRegister);
-        return "success";
+        return "/layout";
     }
 
+    //如果想要走自己写的登出接口,接口不能为/logout,这个默认会走配置那里的.logout()--配置已删除
+    //需要登录才能退出,不要在配置文件那里放开此接口,不然会包Context未空异常
     @PreAuthorize("isAuthenticated()")
-    //如果想要走自己写的登出接口,接口不能为/logout,这个默认会走配置那里的.logout()
     @GetMapping("/customLogout")
     public String customLogout(HttpServletResponse response, HttpServletRequest request) {
         //清空用户的登录
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        SecurityContext context = SecurityContextHolder.getContext();
+        if (context == null) {
+            log.info("获取到的Context为空");
+            return "forward:/toLogin";
+        }
+        Authentication auth = context.getAuthentication();
         //正确的登录姿势
         if (auth != null) {
             //调用api登出
@@ -125,11 +108,38 @@ public class SecurityJwtController {
         return "forward:/toLogin";
     }
 
+    @GetMapping("/queryUserList")
+    public ResultInfo<List<SysUser>> queryUserList() {
+        List<SysUser> result = securityJwtService.queryUserList();
+        return ResultInfo.success(result);
+    }
+
+    @GetMapping("/findUserById")
+    public ResultInfo<SysUser> findUserById(@NotBlank(message = "id不能为空")
+                                            @Length(max = 100, message = "用户id过长")
+                                            @RequestParam(defaultValue = "") String id) {
+        //实测通过swagger不填写id的时候会先抛出MissingServletRequestParameterException异常的id不存在的英文
+        //所以根本来不到注解@NotBlank这里,刚开始还以为是@NotBlank抛出的,竟然没有中文,实测发现还没有到
+        //ConstraintViolationException这个捕捉中文的异常,通过设置参数默认值为空字符串,能够正常获取到中文提示
+        SysUser result = securityJwtService.findUserById(id);
+        return ResultInfo.success(result);
+    }
+
+    @GetMapping("/deleteUserById")
+    public ResultInfo<String> deleteUserById(@NotBlank(message = "id不能为空")
+                                             @Length(max = 100, message = "用户id过长")
+                                             @RequestParam(defaultValue = "") String id) {
+        //实测通过swagger不填写id的时候会先抛出MissingServletRequestParameterException异常的id不存在的英文
+        //所以根本来不到注解@NotBlank这里,刚开始还以为是@NotBlank抛出的,竟然没有中文,实测发现还没有到
+        //ConstraintViolationException这个捕捉中文的异常,通过设置参数默认值为空字符串,能够正常获取到中文提示
+        securityJwtService.deleteUserById(id);
+        return ResultInfo.success("操作成功");
+    }
+
     //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
     //@Secured("admin,manager")//不支持Spring EL表达式
     //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
     @PreAuthorize("hasAuthority('query')")
-    @ApiOperation(value = "yes的查询", notes = "query权限可访问")
     @GetMapping("/yes")
     @ResponseBody
     public ResultInfo<List<String>> yes() {
@@ -146,7 +156,6 @@ public class SecurityJwtController {
     //一点可以使用hasAuthority代替hasRole,但是效果都一样,而且自动补全会把所有的
     //权限角色模块都显示出来供你选择
     @PreAuthorize("hasAuthority('update')")
-    @ApiOperation(value = "hello的查询", notes = "需要update权限可访问")
     @GetMapping("/hello")
     @ResponseBody
     public ResultInfo<List<String>> hello() {
@@ -157,7 +166,6 @@ public class SecurityJwtController {
 
     //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
     @PreAuthorize("hasAuthority('" + CommonDic.ROLE_ + "admin')")//hasAuthority和hasRole功能一样
-    @ApiOperation(value = "world的查询", notes = "admin角色可访问")
     @GetMapping("/world")
     @ResponseBody
     public ResultInfo<List<String>> world() {
@@ -170,7 +178,6 @@ public class SecurityJwtController {
     //@Secured("admin,manager")//不支持Spring EL表达式
     //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
     @PreAuthorize("hasAuthority('" + CommonDic.MODULE_ + "center')")//方法执行之前执行认证
-    @ApiOperation(value = "users的查询", notes = "要center模块权限")
     @GetMapping("/users")
     @ResponseBody
     public ResultInfo<List<String>> users() {
@@ -188,7 +195,6 @@ public class SecurityJwtController {
     //@PreAuthorize("principal.username.toString().equals(#username)")//字符串化也不得行
     @PreAuthorize("authentication.name.equals(#username)")
     //这个直接在安全上下文取的就可以,或许是因为解析token的时候,只设置了SecurityContent而没有UserDetails
-    @ApiOperation(value = "list的查询", notes = "输入登录用户名可访问")
     @GetMapping("/list")
     @ResponseBody
     public ResultInfo<List<String>> list(@RequestParam @Length(min = 10, message = "长度过长") String username) {
@@ -202,7 +208,6 @@ public class SecurityJwtController {
     //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
     //@Secured("admin,manager")//不支持Spring EL表达式
     //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
-    @ApiOperation(value = "getMessage的查询", notes = "无权可访问")
     @GetMapping("/getMessage")
     @ResponseBody
     public ResultInfo<String> getMessage() {
@@ -210,7 +215,6 @@ public class SecurityJwtController {
     }
 
     @PreAuthorize("isAuthenticated()")
-    @ApiOperation("刷新token")
     @PostMapping("/refreshToken")
     @ResponseBody
     public ResultInfo<JwtToken> refreshToken(@Valid @RequestBody RefreshToken refreshToken, HttpServletResponse response) {
@@ -231,18 +235,6 @@ public class SecurityJwtController {
 
     }
 
-    //如果是表单的提交就不用@RequestBody,swagger用起来也比较舒服,如果前端传回来的是json对象,那么就要用
-    //就算是直接访问这个接口,跳过验证码的验证,这里也做了登录失败5次就等待时间
-//    @ApiOperation("前台登录")
-//    @PostMapping("/frontLogin")
-//    @ResponseBody
-//    public ResultInfo<JwtToken> frontLogin(@Valid UserRequest userRequest, HttpServletRequest request,
-//                                           HttpServletResponse response) {
-//        //获取用户名
-//        return getJwtTokenResultInfo(userRequest, request, response,CommonDic.FROM_FRONT);
-//    }
-
-    @ApiOperation("前台登录")
     @PostMapping("/frontLogin")
     public String frontLogin(@Valid UserRequest userRequest, HttpServletRequest request,
                              HttpServletResponse response) {
@@ -251,25 +243,13 @@ public class SecurityJwtController {
         return "/index";
     }
 
-    //如果是表单的提交就不用@RequestBody,swagger用起来也比较舒服,如果前端传回来的是json对象,那么就要用
-    //就算是直接访问这个接口,跳过验证码的验证,这里也做了登录失败5次就等待时间
-    //@PermitAll//实测此注解不能放开接口,必须登录
-//    @ApiOperation("后台登录")
-//    @PostMapping("/backLogin")
-//    @ResponseBody
-//    public ResultInfo<JwtToken> backLogin(@Valid @RequestBody UserRequest userRequest, HttpServletRequest request,
-//                                          HttpServletResponse response) {
-//        return getJwtTokenResultInfo(userRequest, request, response, CommonDic.FROM_BACK);
-//    }
-
-    @ApiOperation("后台登录")
     @PostMapping("/backLogin")
     public String backLogin(@Valid UserRequest userRequest, HttpServletRequest request,
-                            HttpServletResponse response, Model model) throws ServletException, IOException {
+                            HttpServletResponse response, Model model) {
         ResultInfo<JwtToken> jwtTokenResultInfo = getJwtTokenResultInfo(userRequest, request, response, CommonDic.FROM_BACK);
         JwtToken data = jwtTokenResultInfo.getData();
         String accessToken = data.getAccessToken();
-        model.addAttribute("token",accessToken);
+        model.addAttribute("token", accessToken);
         //登录成功之后跳转
         return "/layout";
     }
@@ -360,26 +340,4 @@ public class SecurityJwtController {
         }
     }
 
-    //-------------------------------------另一种方式的验证码实现-------------------------------------------
-
-    @ApiOperation(value = "获取图片验证码")
-    @GetMapping("captcha")
-    @ResponseBody
-    public ResultInfo<CaptchaParam> captcha(@ApiParam("宽度") @RequestParam(defaultValue = "110") int width, @ApiParam("高度") @RequestParam(defaultValue = "34") int height) throws IOException {
-        String code = VerifyCodeUtils.generateVerifyCode(4);
-        String base64img = VerifyCodeUtils.base64Image(width, height, code);
-        String signature = bCryptPasswordEncoder.encode(CODE_HEADER + code.toUpperCase());
-        CaptchaParam data = new CaptchaParam(base64img, signature);
-        return ResultInfo.success(data);
-    }
-
-    @ApiOperation(value = "校验验证码")
-    @PostMapping("checkCaptcha")
-    @ResponseBody
-    public ResultInfo<String> checkCaptcha(@Valid @RequestBody CaptchaParam param) {
-        if (bCryptPasswordEncoder.matches(CODE_HEADER + param.getCaptcha().toUpperCase(), param.getSignature())) {
-            return ResultInfo.success("验证码正确");
-        }
-        return ResultInfo.error("验证码错误");
-    }
 }

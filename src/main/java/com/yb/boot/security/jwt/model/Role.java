@@ -1,7 +1,5 @@
 package com.yb.boot.security.jwt.model;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
 import javax.persistence.*;
@@ -17,7 +15,6 @@ import java.util.UUID;
  */
 @Entity
 @Table//这里就使用默认的映射策略
-@ApiModel("角色信息表")
 public class Role implements Serializable {
     private static final long serialVersionUID = -1424025425731168559L;
 
@@ -27,28 +24,24 @@ public class Role implements Serializable {
     /**
      * 角色
      */
-    @ApiModelProperty("角色")
     @Column(unique = true)
     private String role;
 
     /**
      * 角色中文
      */
-    @ApiModelProperty("角色中文")
     private String roleCn;
 
     /**
      * 角色权限
      */
-    @ApiModelProperty("角色权限")
     @ManyToMany(targetEntity = Permission.class,mappedBy = "roles",fetch = FetchType.EAGER,
-            cascade = CascadeType.MERGE)
+            cascade = CascadeType.ALL)
     private Set<Permission> permissions= new HashSet<>();
 
     /**
      * 角色用户
      */
-    @ApiModelProperty("角色用户")
     @ManyToMany(targetEntity = SysUser.class, fetch = FetchType.LAZY)
     private Set<SysUser> users= new HashSet<>();
 

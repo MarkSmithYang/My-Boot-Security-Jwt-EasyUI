@@ -2,7 +2,6 @@
 <html lang="en" xmlns="http://www.w3.org/1999/html" xmlns:th="http://www.w3.org/1999/xhtml">
 <head>
     <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
-    <link rel="stylesheet" type="text/css" href="../static/js/preFilter.js">
     <link rel="stylesheet" type="text/css" href="../static/js/jquery-3.3.1.js">
     <link rel="stylesheet" type="text/css" href="../static/jquery-easyui-1.6.8/themes/default/easyui.css">
     <link rel="stylesheet" type="text/css" href="../static/jquery-easyui-1.6.8/themes/icon.css">
@@ -12,35 +11,9 @@
     <script type="text/javascript" src="../static/jquery-easyui-1.6.8/jquery.easyui.min.js"></script>
     <meta charset="UTF-8">
     <title>用户后台管理</title>
-    <script>
-        function addUser() {
-            var token = document.getElementById("f").value;
-
-            $("#fo").form('submit', {
-                url: '/addUser',
-                novalidate:true,
-                headers: {'Authorization': token},
-                onSubmit: function () {
-                    //api的指的方法validate需要这样用
-                    var flag = $(this).form("validate");
-                    return flag;
-                },
-                success: function (data) {
-                    var result = eval("(" + data + ")");
-                    if (result.success) {
-                        window.location.href = result.msg;
-                    } else {
-                        $.messager.alert('提示', result.msg);
-                    }
-                    alert(data)
-                }
-            });
-        }
-    </script>
 </head>
 <body class="easyui-panel" title="<center><b style='font-size: medium;color: #0E2D5F'>后台用户管理系统</b></center>"
       data-options="fit:true">
-<input type="text" th:value="${token}" id="f"/>
 <div class="easyui-layout" data-options="fit:true">
     <div data-options="region:'north',border:false" style="height:30px;background:#B3DFDA;padding:5px;" align="right">
         <input class="easyui-textbox" align="right" iconCls="icon-search" style="width: 130px;height: 22px;">
@@ -111,8 +84,7 @@
                 </table>
                 <!------------------------------------------------------------------------------------------------------>
                 <div id="dgtoolbar">
-                    <a id="aa" href="#" class="easyui-linkbutton" iconCls="icon-add" plain="true"
-                       onclick="javascript:$('#win').dialog('open')">添加用户</a>
+                    <a href="#" class="easyui-linkbutton" iconCls="icon-add" onclick="$('#win').dialog('open')">添加用户</a>
                     <a href="#" class="easyui-linkbutton" iconCls="icon-save" plain="true"
                     >修改信息</a>
                     <a href="#" class="easyui-linkbutton" iconCls="icon-cut" plain="true"
@@ -183,7 +155,7 @@
                         </td>
                     </tr>
                     <tr>
-                        <td>
+                        <td align="right">
                             <input type="submit" value="Submit"/>
                         </td>
                     </tr>
@@ -191,9 +163,9 @@
             </form>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
             <div id="add-buttons" align="right" style="padding: 20px">
-                <a href="#" class="easyui-linkbutton" onclick="addUser()" style="background-color: #4b72a4">添加</a>
-                <a href="#" class="easyui-linkbutton" style="background-color: #4b72a4"
-                   onclick="javascript:$('#win').dialog('close')">取消</a>
+                <a href="/addUser" methods="post" class="easyui-linkbutton" style="background-color: #4b72a4">添加</a>
+                <a class="easyui-linkbutton" style="background-color: #4b72a4"
+                      onclick="javascript:$('#win').dialog('close')">取消</a>
             </div>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
         </div>

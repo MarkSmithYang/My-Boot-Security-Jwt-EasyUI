@@ -2,11 +2,8 @@ package com.yb.boot.security.jwt.request;
 
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
-
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 
@@ -15,40 +12,53 @@ import javax.validation.constraints.Pattern;
  * author yangbiao
  * date 2018/12/12
  */
-@ApiModel("用户注册(添加)信息封装类")
 public class UserRegister {
 
+    /**
+     * 用户名
+     */
     @Length(max = 20, message = "用户名不能大于20字")
     @NotBlank(message = "用户名不能为空")
-    @ApiModelProperty("用户名")
     private String username;
 
+    /**
+     * 用户密码
+     */
     @Length(min = 3, max = 16, message = "密码只允许6到16个字符")
     @NotBlank(message = "密码不能为空")
-    @ApiModelProperty("密码")
     private String password;
 
+    /**
+     * 用户确认密码
+     */
     @Length(min = 3, max = 16, message = "确认密码只允许6到16个字符")
     @NotBlank(message = "确认密码不能为空")
-    @ApiModelProperty("确认密码")
     private String rePassword;
 
+    /**
+     * 用户部门
+     */
     @Length(max = 25, message = "用户部门不能大于25字")
-    @ApiModelProperty("用户部门")
     private String department;
 
+    /**
+     * 用户职位
+     */
     @Length(max = 25, message = "用户职位不能大于25字")
-    @ApiModelProperty("用户职位")
     private String position;
 
+    /**
+     * 用户电话
+     */
     @NotBlank(message = "电话不能为空")
     @Pattern(regexp = "^(13[0-9]|14[579]|15[0-3,5-9]|16[6]|17[0135678]|18[0-9]|19[89])\\d{8}$", message = "电话有误")
-    @ApiModelProperty("用户电话")
     private String phone;
 
+    /**
+     * 用户类型(前台或后台等)
+     */
     @Length(max = 10, message = "用户类型长度过长")
     @NotBlank(message = "用户类型不能为空")
-    @ApiModelProperty("用户类型(前台或后台等)")
     private String from;
 
     /**

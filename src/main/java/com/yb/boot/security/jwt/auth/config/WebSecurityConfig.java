@@ -1,17 +1,16 @@
 package com.yb.boot.security.jwt.auth.config;
 
 import com.yb.boot.security.jwt.auth.impl.AccessDeniedHandlerImpl;
+import com.yb.boot.security.jwt.auth.other.JwtAuthenticationFilter;
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.service.UserDetailsServiceImpl;
 import com.yb.boot.security.jwt.auth.other.CustomAuthenticationProvider;
-import com.yb.boot.security.jwt.auth.other.JwtAuthenticationFilter;
 import com.yb.boot.security.jwt.auth.other.RedisSecurityContextRepository;
 import com.yb.boot.security.jwt.auth.impl.AuthenticationEntryPointImpl;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -24,7 +23,6 @@ import org.springframework.security.web.authentication.rememberme.JdbcTokenRepos
 import org.springframework.security.web.authentication.rememberme.PersistentTokenRepository;
 
 import javax.sql.DataSource;
-import java.io.Serializable;
 
 /**
  * author yangbiao

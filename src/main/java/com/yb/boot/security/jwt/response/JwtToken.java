@@ -1,7 +1,5 @@
 package com.yb.boot.security.jwt.response;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
 import java.io.Serializable;
 
 /**
@@ -9,17 +7,22 @@ import java.io.Serializable;
  * author yangbiao
  * date 2018/11/30
  */
-@ApiModel("登录成功返回的数据封装类")
 public class JwtToken implements Serializable {
     private static final long serialVersionUID = -5679643008444921620L;
 
-    @ApiModelProperty("访问用token")
+    /**
+     * 访问用token
+     */
     public String accessToken;
 
-    @ApiModelProperty("刷新用token")
+    /**
+     * 刷新用token
+     */
     public String refreshToken;
 
-    @ApiModelProperty("token过期时间")
+    /**
+     * token过期时间
+     */
     public int tokenExpire;
 
     public String getAccessToken() {

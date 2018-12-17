@@ -89,16 +89,7 @@
             <version>5.1.47</version>
         </dependency>
         <!--swagger的依赖,swagger本身不支持spring mvc的,springfox把swagger包装了一下,让他可以支持springmvc-->
-        <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-swagger2</artifactId>
-            <version>2.9.2</version>
-        </dependency>
-        <dependency>
-            <groupId>io.springfox</groupId>
-            <artifactId>springfox-swagger-ui</artifactId>
-            <version>2.9.2</version>
-        </dependency>
+        <!--因为是前后端在一起的,所以swagger在这这里没有了意义,所以去掉了-->
         <!--springboot测试依赖-->
         <dependency>
             <groupId>org.springframework.boot</groupId>

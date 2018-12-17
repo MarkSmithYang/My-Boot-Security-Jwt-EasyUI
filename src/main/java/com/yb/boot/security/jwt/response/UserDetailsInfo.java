@@ -1,12 +1,7 @@
 package com.yb.boot.security.jwt.response;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
-import org.springframework.security.core.GrantedAuthority;
-
 import java.io.Serializable;
 import java.time.LocalDateTime;
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
@@ -15,44 +10,64 @@ import java.util.Set;
  * author yangbiao
  * date 2018/11/30
  */
-@ApiModel("返回用户详细信息封装类")
 public class UserDetailsInfo implements Serializable {
     private static final long serialVersionUID = 4313694248931257246L;
 
-    @ApiModelProperty("id")
     private String id;
 
-    @ApiModelProperty("用户名")
+    /**
+     * 用户名
+     */
     private String username;
 
-    @ApiModelProperty("头像信息")
+    /**
+     * 头像信息
+     */
     private String headUrl;
 
-    @ApiModelProperty("创建时间")
+    /**
+     * 创建时间
+     */
     private LocalDateTime createTime;
 
-    @ApiModelProperty("用户部门")
+    /**
+     * 用户部门
+     */
     private String department;
 
-    @ApiModelProperty("用户职位")
+    /**
+     * 用户职位
+     */
     private String position;
 
-    @ApiModelProperty("用户电话")
+    /**
+     * 用户电话
+     */
     private String phone;
 
-    @ApiModelProperty("用户IP")
+    /**
+     * 用户IP
+     */
     private String ip;
 
-    @ApiModelProperty("用户类型(前台或后台等)")
+    /**
+     * 用户类型(前台或后台等)
+     */
     private String from;
 
-    @ApiModelProperty("用户权限")
+    /**
+     * 用户权限
+     */
     private Set<String> permissions = new HashSet<>();
 
-    @ApiModelProperty("用户角色")
+    /**
+     * 用户角色
+     */
     private Set<String> roles = new HashSet<>();//实例化后可以直接get使用
 
-    @ApiModelProperty("用户的模块(菜单)信息")
+    /**
+     * 用户的模块(菜单)信息
+     */
     private Set<String> modules = new HashSet<>();
 
     @Override

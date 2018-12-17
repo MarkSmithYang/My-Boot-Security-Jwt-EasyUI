@@ -1,24 +1,28 @@
 package com.yb.boot.security.jwt.common;
 
-import io.swagger.annotations.ApiModel;
-import io.swagger.annotations.ApiModelProperty;
-
 /**
  * @author yangbiao
  * @Description:返回数据的封装类
  * @date 2018/11/2
  */
-@ApiModel("Restful风格数据封装类")
 public class ResultInfo<T> {
     private static final String MESSAGE_SUCCESS = "success";
     private static final Integer STATUS_SUCCESS = 200;
     private static final Integer STATUS_BADREQUEST = 400;
 
-    @ApiModelProperty("返回信息")
+    /**
+     * 返回信息
+     */
     private String message;
-    @ApiModelProperty("返回状态码")
+
+    /**
+     * 返回状态码
+     */
     private Integer status;
-    @ApiModelProperty("返回数据")
+
+    /**
+     * 返回数据
+     */
     private T data;
 
     //--------------------------------用于链式编程返回异常捕获信息-----------------------------------
