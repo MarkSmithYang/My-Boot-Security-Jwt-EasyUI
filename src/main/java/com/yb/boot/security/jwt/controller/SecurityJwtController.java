@@ -1,5 +1,6 @@
 package com.yb.boot.security.jwt.controller;
 
+import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.auth.tools.AntiViolenceCheckTools;
 import com.yb.boot.security.jwt.auth.tools.JwtTokenTools;
 import com.yb.boot.security.jwt.common.CommonDic;
@@ -109,9 +110,11 @@ public class SecurityJwtController {
     }
 
     @GetMapping("/queryUserList")
-    public ResultInfo<List<SysUser>> queryUserList() {
-        List<SysUser> result = securityJwtService.queryUserList();
-        return ResultInfo.success(result);
+    @ResponseBody
+    public JSONObject queryUserList(@RequestParam(defaultValue = "1") int page,@RequestParam(defaultValue = "25") int rows,
+                                    @RequestParam(defaultValue = "") String username) {
+        JSONObject result = securityJwtService.queryUserList(page,rows,username);
+        return result;
     }
 
     @GetMapping("/findUserById")

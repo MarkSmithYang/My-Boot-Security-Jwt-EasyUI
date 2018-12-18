@@ -11,12 +11,246 @@
     <script type="text/javascript" src="../static/jquery-easyui-1.6.8/jquery.easyui.min.js"></script>
     <meta charset="UTF-8">
     <title>用户后台管理</title>
+    <!--注意需要在script标签里写th:inline="none",才能正常解析传递过的指定格式的json数据-->
+    <script th:inline="none">
+        $(document).ready(function () {
+            //通过用户名查询用户数据
+            function query(){
+                //使用easyUI的方法获取值
+                var value = $("#search").textbox('getValue');
+                //解决后台获取数据乱码问题
+                var username = encodeURI(value);
+                //这个查询方式=====通过#dg===queryEmp?ename=empname
+                $('#dg').datagrid('load', {
+                    //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
+                    username: username
+                });
+            }
+
+            $("#dg").datagrid({
+                //分页全部使用默认值,懒得设置了
+                title: '用户信息表',
+                url: '/queryUserList',
+                method: 'get',
+                //在从远程站点加载数据的时候显示提示消息
+                loadMsg: '加载中',
+                //如果为true，则显示一个行号列
+                rownumbers: true,
+                //如果为true，则在DataGrid控件底部显示分页工具栏
+                pagination: true,
+                pageNumber: 1,
+                pageSize: 10,
+                //在设置分页属性的时候 初始化页面选择框
+                pageList: [10, 20, 30],
+                columns: [[
+                    {field: 'id', title: '', width: '9%', align: 'center', checkbox: true},
+                    {field: 'username', title: '用户名', width: '9%', align: 'center'},
+                    {field: 'department', title: '部门', width: '9%', align: 'center'},
+                    {field: 'position', title: '职位', width: '9%', align: 'center'},
+                    {field: 'phone', title: '电话', width: '9%', align: 'center'},
+                    {field: 'from', title: '系统', width: '9%', align: 'center'},
+                    {field: 'headUrl', title: '头像', width: '9%', align: 'center'}
+                ]],
+                //设置按钮
+                toolbar: [{
+                    //让边框消失
+                    plain: true,
+                    iconCls: 'icon-add',
+                    text: '新增',
+                    handler: function () {
+                        alert('编辑按钮')
+                    }
+                }, '-', {
+                    //让边框消失
+                    plain: true,
+                    iconCls: 'icon-edit',
+                    text: '编辑',
+                    handler: function () {
+                        //获取被选中的行对象
+                        var array = $("#dg").datagrid("getSelections");
+                        //声明一个变量,用以拼接id
+                        var ids = "";
+                        for (var i = 0; i < array.length; i++) {
+                            ids = ids + array[i].id + ",";
+                        }
+                        //去除字符串末尾的逗号(,)
+                        var s = ids.substring(0,ids.length-1);
+                    }
+                }, '-', {
+                    //让边框消失
+                    plain: true,
+                    iconCls: 'icon-cut',
+                    text: '删除',
+                    onclick: function () {
+                    },
+                    handler: function () {
+                        alert('帮助按钮')
+                    }
+                }]
+            });
+        })
+    </script>
+    <script>
+        //重写时间框
+        $.fn.datebox.defaults.formatter = function (date) {
+            var y = date.getFullYear();
+            var m = date.getMonth() + 1;
+            var d = date.getDate();
+            return y + '-' + m + '-' + d;
+        }
+
+        //时间戳的转换
+        function dataFormatter(value, row, index) {
+            var da = value;
+            da = new Date(da);
+            var year = da.getFullYear() + '年';
+            var month = da.getMonth() + 1 + '月';
+            var date = da.getDate() + '日';
+            return ([year, month, date].join('-'));
+        }
+
+        //value：字段值,rowData：行记录数据,rowIndex: 行索引
+        //从数据库中获取一个标记  在前台展示是要展示标记所代表的含义
+        function sexFormatter(value, row, index) {
+            if (value == 1) {
+                return '男';
+            } else {
+                return '女';
+            }
+        }
+
+        //修改清除
+        function clearUpdate() {
+            $('#ff').form('clear');
+        }
+
+        //新增清除
+        function clearAdd() {
+            $('#zz').form('clear');
+        }
+
+        //查询触发的函数
+        function queryForm() {
+            //$("input[name='empname']").val(); 获取的是jQuery对象  要是用jQuery的方法获取值
+            //使用easyUI的方法获取值
+            var username = $("#search").textbox('getValue');
+
+            //解决后台获取数据乱码问题
+            var name1 = encodeURI(username);
+            //这个查询方式=====通过#dg===queryEmp?ename=empname
+            $('#dg').datagrid('load', {
+                //======easyui所有的方法调用   控件对象.控件名称('方法名','方法参数')
+                ename: name1
+
+            });
+        }
+
+        //修改的方法
+        function updateForm() {
+            //获取选中行的所有信息 以便下面发起请求获取数据id
+            var selectedRow = $("#dg").datagrid("getSelected");
+            //表单提交 会获取表单的所有信息
+            $('#ff').form('submit', {
+                url: 'updateEmp/' + selectedRow.empno, //selectedRow.empno 获取选中行的数据id
+                success: function (msg) {
+                    msg = JSON.parse(msg);
+                    if (msg.code == 1) {
+                        queryForm()
+                        $.messager.alert('提示消息', '修改成功');
+                        $("#w").window('close');
+                    } else {
+                        $.message.alert('错误消息', msg.message);
+                    }
+                }
+            })
+        }
+
+        //新增的方法
+        function addForm() {
+            $('#zz').form('submit', {
+                url: '/addUser',
+                success: function (msg) {
+                    msg = JSON.parse(msg);
+                    if (msg.code == 1) {
+                        queryForm()
+                        $.messager.alert('提示消息', '新增成功');
+                        $("#z").window('close');
+                    } else {
+                        $.messager.alert('错误消息', msg.message);
+                    }
+                }
+            })
+        }
+
+        //添加toolbar工具栏
+        // $(function () {
+        //     $("#dg").datagrid({
+        //         toolbar: [{
+        //             iconCls: 'icon-insert',
+        //             text: '新增',
+        //             //点击新增弹出一个新增的div窗口
+        //             onClick: function () {
+        //                 $("#z").window('open');
+        //             }
+        //         }, {
+        //             iconCls: 'icon-edit',
+        //             text: '修改',
+        //             onClick: function () {
+        //                 var selectedRow = $("#dg").datagrid("getSelected");
+        //                 if (selectedRow == null) {
+        //                     $.messager.alert('提示消息', '请选择数据');
+        //                     return;
+        //                 }
+        //                 $("#w").window('open');
+        //                 //带上原数据
+        //                 $("#ff").form('load', selectedRow)
+        //             }
+        //         }, {
+        //             iconCls: 'icon-remove',
+        //             text: '删除',
+        //             onClick: function () {
+        //
+        //                 var selectedRow = $("#dg").datagrid("getSelections");
+        //                 if (selectedRow == null) {
+        //                     $.messager.alert('提示消息', '请选择数据');
+        //                     return;
+        //                 }
+        //                 var falg;
+        //                 for (var i = 0; i < selectedRow.length; i++) {
+        //                     if (i == 0) {
+        //                         falg = (selectedRow[i].empno);
+        //                     } else {
+        //                         falg += "," + selectedRow[i].empno;
+        //                     }
+        //                 }
+        //
+        //                 //var sid=selectedRow.empno;
+        //                 $.ajax({
+        //                     url: 'deleteEmp/' + falg,
+        //                     method: 'POST',
+        //                     dataType: 'json',
+        //                     data: '_method=delete',
+        //                     success: function (msg) {
+        //                         if (msg.code == 1) {
+        //                             queryForm()
+        //                             $.messager.alert('提示消息', '删除成功');
+        //                         } else {
+        //                             $.messager.alert('错误消息', msg.message);
+        //                         }
+        //                     }
+        //                 });
+        //             }
+        //         }]
+        //     })
+        // })
+    </script>
 </head>
 <body class="easyui-panel" title="<center><b style='font-size: medium;color: #0E2D5F'>后台用户管理系统</b></center>"
       data-options="fit:true">
 <div class="easyui-layout" data-options="fit:true">
     <div data-options="region:'north',border:false" style="height:30px;background:#B3DFDA;padding:5px;" align="right">
-        <input class="easyui-textbox" align="right" iconCls="icon-search" style="width: 130px;height: 22px;">
+        搜索<input id="search" placeholder="输入用户名搜索" class="easyui-textbox" align="right" iconCls="icon-search"
+                 style="width: 130px;height: 22px;" onblur="query()">
     </div>
     <!------------------------------------------------------------------------------------------------------->
     <div data-options="region:'west',split:true,hideCollapsedContent:false,collapsed:false"
@@ -62,43 +296,23 @@
     <div data-options="region:'south',border:false" style="height:50px;background:#A9FACD;padding:10px;">
         south region
     </div>
-    <!------------------------------------------------------------------------------------------------------->
+    <!------------------------------------------------center------------------------------------------------------->
     <div data-options="region:'center',title:'用户管理中心'">
         <div id="tt" class="easyui-tabs" style="width:500px;height:250px;" data-options="fit:true">
             <div title="用户管理" style="padding:3px;display:none;">
-                <table id="datagrid" class="easyui-datagrid" style="width:100%;height:100%"
-                       url="/queryUserList"
-                       toolbar="#dgtoolbar" pagination="true"
-                       pageSize="25" pageList="[25,15,10]"
-                       rownumbers="false" fitColumns="true" singleSelect="true">
-                    <thead>
-                    <tr>
-                        <th data-options="field:'username',align:'center',width:'9%'">用户名</th>
-                        <th data-options="field:'department',align:'center',width:'9%'">部门</th>
-                        <th data-options="field:'position',align:'center',width:'11%'">职位</th>
-                        <th data-options="field:'phone',align:'center',width:'9%'">电话</th>
-                        <th data-options="field:'from',align:'center',width:'9%'">系统</th>
-                        <th data-options="field:'headUrl',align:'center',width:'9%'">头像</th>
-                    </tr>
-                    </thead>
-                </table>
                 <!------------------------------------------------------------------------------------------------------>
-                <div id="dgtoolbar">
-                    <a href="#" class="easyui-linkbutton" iconCls="icon-add" onclick="$('#win').dialog('open')">添加用户</a>
-                    <a href="#" class="easyui-linkbutton" iconCls="icon-save" plain="true"
-                    >修改信息</a>
-                    <a href="#" class="easyui-linkbutton" iconCls="icon-cut" plain="true"
-                       onclick="removeUsers()">删除用户</a>
-                </div>
-                <div id="openWindow"></div>
+                <table id="dg" class="easyui-datagrid" style="width:100%;height:100%"></table>
+                <!------------------------------------------------------------------------------------------------------>
+                <!--plain="true"这个可以去除按钮的边框,让按钮和背景融合-->
                 <!------------------------------------------------------------------------------------------------------>
             </div>
             <div title="权限管理" data-options="closable:false" style="overflow:auto;padding:20px;display:none;">
                 tab2
             </div>
         </div>
-        <div id="win" style="background-color: #6b9cde">
-            <form id="fo" method="post" action="/addUser">
+        <div id="win" class="easyui-window" title="新增用户信息" data-options="iconCls:'icon-save',closed:true"
+             style="width:500px;height:450px;padding:5px;background-color: #6b9cde">
+            <form id="fo" method="post">
                 <table align="center" style="border-collapse:separate; border-spacing:0px 11px;">
                     <tr>
                         <td align="right"><label>用户名:</label></td>
@@ -154,18 +368,16 @@
                             </select>
                         </td>
                     </tr>
-                    <tr>
-                        <td align="right">
-                            <input type="submit" value="Submit"/>
-                        </td>
-                    </tr>
                 </table>
             </form>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
             <div id="add-buttons" align="right" style="padding: 20px">
-                <a href="/addUser" methods="post" class="easyui-linkbutton" style="background-color: #4b72a4">添加</a>
-                <a class="easyui-linkbutton" style="background-color: #4b72a4"
-                      onclick="javascript:$('#win').dialog('close')">取消</a>
+                <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
+                   onclick="addForm()">添加</a>
+                <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
+                   onclick="clearAdd()">清空</a>
+                <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
+                   onclick="javascript:$('#win').dialog('close')">取消</a>
             </div>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
         </div>

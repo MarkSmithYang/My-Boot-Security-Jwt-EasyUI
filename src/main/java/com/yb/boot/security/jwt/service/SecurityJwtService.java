@@ -1,5 +1,6 @@
 package com.yb.boot.security.jwt.service;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
@@ -19,10 +20,16 @@ import com.yb.boot.security.jwt.response.UserDetailsInfo;
 import com.yb.boot.security.jwt.utils.LoginUserUtils;
 import com.yb.boot.security.jwt.utils.RealIpGetUtils;
 import org.apache.commons.collections.CollectionUtils;
+import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
+import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -30,12 +37,15 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import javax.persistence.criteria.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import java.io.Serializable;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Description:服务层代码
@@ -52,6 +62,8 @@ public class SecurityJwtService {
     private SysUserRepository sysUserRepository;
     @Autowired
     private BCryptPasswordEncoder bCryptPasswordEncoder;
+    @Autowired
+    private RedisTemplate<String, Serializable> redisTemplate;
     @Autowired
     private CustomAuthenticationProvider customAuthenticationProvider;
 
@@ -91,6 +103,11 @@ public class SecurityJwtService {
         jwtToken.setTokenExpire(jwtProperties.getExpireSeconds());
         //填充数据到LoginUserUtils,供其他的子线程共享信息
         LoginUserUtils.setUserDetailsInfo(detailsInfo);
+        //把token存储到redis,用来判断前后端未分离请求的合法性,因为没有在请求头里放置token,所以
+        //需要去redis获取token来验证是否已经登录,设置30分钟的过期时间,在此期间访问都不需要登录
+        String ipAddress = RealIpGetUtils.getIpAddress(request);
+        redisTemplate.opsForValue().set(CommonDic.LOGIN_SUCCESS_TOKEN + ipAddress, CommonDic.TOKEN_PREFIX +
+                accessToken, CommonDic.TOKEN_EXPIRE, TimeUnit.MINUTES);
         //返回数据
         return jwtToken;
     }
@@ -242,7 +259,7 @@ public class SecurityJwtService {
             try {
                 sysUserRepository.save(sysUser);
             } catch (Exception e1) {
-                log.info("用户信息第二次保存失败="+e1.getMessage());
+                log.info("用户信息第二次保存失败=" + e1.getMessage());
                 //抛出异常-->回滚事务
                 ParameterErrorException.message("用户添加失败");
             }
@@ -251,10 +268,43 @@ public class SecurityJwtService {
 
     /**
      * 查询用户信息列表(因为数据少,未分页)
+     *
+     * @param page
+     * @param rows
+     * @param username
      */
-    public List<SysUser> queryUserList() {
-        List<SysUser> result = sysUserRepository.findAll(Sort.by(Sort.Direction.DESC,"createTime"));
-        return result;
+    public JSONObject queryUserList(int page, int rows, String username) {
+        //构建Pageable
+        Pageable pageable = PageRequest.of(page - 1, rows, new Sort(Sort.Direction.DESC, "createTime"));
+        //查询数据
+        Page<SysUser> all = sysUserRepository.findAll((root, cq, cb) -> {
+            Predicate predicate = cb.conjunction();
+            List<Expression<Boolean>> expressions = predicate.getExpressions();
+            if (StringUtils.isNotBlank(username)) {
+                expressions.add(cb.like(root.get("username"), "%" + username + "%"));
+            }
+            return predicate;
+        }, pageable);
+        //封装需要的数据到UserDetailsInfo
+        JSONArray array = new JSONArray();
+        if (CollectionUtils.isNotEmpty(all.getContent())) {
+            all.getContent().forEach(s -> {
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("id", s.getId());
+                jsonObject.put("username", s.getUsername());
+                jsonObject.put("department", s.getUserInfo() == null ? null : s.getUserInfo().getDepartment());
+                jsonObject.put("position", s.getUserInfo() == null ? null : s.getUserInfo().getPosition());
+                jsonObject.put("phone", s.getUserInfo() == null ? null : s.getUserInfo().getPhone());
+                jsonObject.put("from", s.getUserFrom());
+                jsonObject.put("headUrl", s.getHeadUrl());
+                array.add(jsonObject);
+            });
+        }
+        //封装需要的数据结构
+        JSONObject json = new JSONObject();
+        json.put("total", all.getTotalElements());
+        json.put("rows", array);
+        return json;
     }
 
     /**
@@ -262,7 +312,7 @@ public class SecurityJwtService {
      */
     public SysUser findUserById(String id) {
         Optional<SysUser> result = sysUserRepository.findById(id);
-        return result.isPresent()?result.get():null;
+        return result.isPresent() ? result.get() : null;
     }
 
     /**
@@ -272,7 +322,7 @@ public class SecurityJwtService {
     public void deleteUserById(String id) {
         //判断用户是否存在,存在才删除--(调用上面的方法)
         SysUser userById = findUserById(id);
-        if(userById==null){
+        if (userById == null) {
             ParameterErrorException.message("id不能正确");
         }
         //删除用户信息-->开始因为没有设置级联删除,所以会报错,更改级联操作为ALL(包含级联删除)的时候,
@@ -284,7 +334,7 @@ public class SecurityJwtService {
             try {
                 sysUserRepository.deleteById(id);
             } catch (Exception e1) {
-                log.info("第二次删除异常="+e1.getMessage());
+                log.info("第二次删除异常=" + e1.getMessage());
                 //抛出异常回滚事务
                 ParameterErrorException.message("操作失败");
             }

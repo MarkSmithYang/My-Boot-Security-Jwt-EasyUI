@@ -15,6 +15,8 @@ public class CommonDic {
     public static final String HEADER_SINGLE = "Authorization";
     //过期时间设置
     public static final long TOKEN_EXPIRE = 30;//分钟
+    //登录token存放redis的key
+    public static final String LOGIN_SUCCESS_TOKEN = "LOGIN_SUCCESS_TOKEN";
     //ajxa处理类用
     public static final String SECURITY_CONTEXT = "SECURITY_CONTEXT";
     //登录的来源
