@@ -41,10 +41,7 @@ import javax.persistence.criteria.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.Serializable;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -339,6 +336,42 @@ public class SecurityJwtService {
                 ParameterErrorException.message("操作失败");
             }
         }
+    }
+
+
+    /**
+     * 根据用户id修改在前端页面展示的信息(因为这个和添加的时候是一样的,其他的信息是添加不了的)
+     */
+    @Transactional(rollbackFor = Exception.class)
+    public String updateUser(String id) {
+        return null;
+    }
+
+    /**
+     * 根据用户id删除用户相关信息
+     */
+    public String deleteUser(String ids) {
+        //处理id(拼接的多个id),id的非空判断已经由注解实现
+        String[] split = ids.split(",");
+        //因为不管字符串含不含有逗号,都不会报错,只要字符串不空,切割的数组也不能空,所以
+        List<String> list = Arrays.asList(split);
+       //通过id查询用户是否存在,存在则删除
+        List<SysUser> users = sysUserRepository.findByIdIn(list);
+        //判断id是否都能查询出用户
+        if(CollectionUtils.isNotEmpty(users) && list.size()==users.size()){
+            //说明传递过来的id都是正确的--删除信息
+            try {
+                sysUserRepository.deleteAll(users);
+            } catch (Exception e) {
+                try {
+                    sysUserRepository.deleteAll(users);
+                } catch (Exception e1) {
+                   log.info("删除失败="+e1.getMessage());
+                   ParameterErrorException.message("操作失败");
+                }
+            }
+        }
+        return "操作成功";
     }
 
 }

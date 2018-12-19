@@ -4,6 +4,8 @@ import com.yb.boot.security.jwt.model.SysUser;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
+import java.util.List;
+
 /**
  * @author yangbiao
  * @Description:
@@ -12,4 +14,6 @@ import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 public interface SysUserRepository extends JpaRepository<SysUser,String>, JpaSpecificationExecutor<SysUser> {
 
     SysUser findByUsernameAndUserFrom(String username, String from);
+
+    List<SysUser> findByIdIn(List<String> list);
 }

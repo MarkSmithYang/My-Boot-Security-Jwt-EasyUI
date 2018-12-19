@@ -27,8 +27,9 @@
                 pagination: true,
                 pageNumber: 1,
                 pageSize: 10,
-                //在设置分页属性的时候 初始化页面选择框
-                pageList: [10, 20, 30],
+                //在设置分页属性的时候 初始化页面选择框,最多允许20行,
+                //这样好计算全选之后拼接id的长度,接口好做容错判断
+                pageList: [10, 20],
                 columns: [[
                     {field: 'id', title: '', width: '9%', align: 'center', checkbox: true},
                     {field: 'username', title: '用户名', width: '9%', align: 'center'},
@@ -53,6 +54,36 @@
                     iconCls: 'icon-edit',
                     text: '编辑',
                     handler: function () {
+                        //获取选中行
+                        var array = $("#dg").datagrid("getSelections");
+                        //只有只选中一行的时候才允许修改
+                        if (array.length == 1) {
+                            //表单提交 会获取表单的所有信息
+                            $('#ff').form('submit', {
+                                url: 'updateUser/' + id,
+                                methods: 'get',
+                                success: function (data) {
+                                    data = JSON.parse(data);
+                                    if (data.code == 1) {
+                                        //调用query()方法查询数据,只要搜索框没有值,就会查询所有
+                                        query();
+                                        $.messager.alert('提示消息', '修改成功');
+                                        $("#w").window('close');
+                                    } else {
+                                        $.message.alert('错误消息', data.message);
+                                    }
+                                }
+                            });
+                        } else {
+                            $.messager.alert('提示消息', '请选择一行进行操作');
+                        }
+                    }
+                }, '-', {
+                    //让按钮边框消失
+                    plain: true,
+                    iconCls: 'icon-cut',
+                    text: '删除',
+                    handler: function () {
                         //获取被选中的行对象
                         var array = $("#dg").datagrid("getSelections");
                         //声明一个变量,用以拼接id
@@ -61,17 +92,7 @@
                             ids = ids + array[i].id + ",";
                         }
                         //去除字符串末尾的逗号(,)
-                        var s = ids.substring(0, ids.length - 1);
-                    }
-                }, '-', {
-                    //让边框消失
-                    plain: true,
-                    iconCls: 'icon-cut',
-                    text: '删除',
-                    onclick: function () {
-                    },
-                    handler: function () {
-                        alert('帮助按钮')
+                        ids = ids.substring(0, ids.length - 1);
                     }
                 }]
             });

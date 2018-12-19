@@ -40,6 +40,7 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -115,6 +116,26 @@ public class SecurityJwtController {
                                     @RequestParam(defaultValue = "") String username) {
         JSONObject result = securityJwtService.queryUserList(page,rows,username);
         return result;
+    }
+
+    @PostMapping("/updateUser")
+    @ResponseBody
+    public JSONObject updateUser(@RequestParam(defaultValue = "") @NotBlank(message = "id不能为空")
+                                     //因为页面设置的最多能选20行,也就是20个id,所以
+                                     //长度不会超过20*36+20(20个逗号实际是19,id的UUID的长度为36实为32)
+                                     @Length(max = 750, message = "用户id过长") String id) {
+        String result = securityJwtService.updateUser(id);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
+    }
+
+    @PostMapping("/deleteUser")
+    @ResponseBody
+    public JSONObject deleteUser(@RequestParam(defaultValue = "") @NotBlank(message = "id不能为空")
+                                     //因为页面设置的最多能选20行,也就是20个id,所以
+                                     //长度不会超过20*36+20(20个逗号实际是19,id的UUID的长度为36实为32)
+                                     @Length(max = 750, message = "用户id过长") String ids) {
+        String result = securityJwtService.deleteUser(ids);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
     }
 
     @GetMapping("/findUserById")
