@@ -5,9 +5,7 @@ import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.common.JwtProperties;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
 import com.yb.boot.security.jwt.response.UserDetailsInfo;
-import io.jsonwebtoken.Claims;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.*;
 import org.apache.catalina.servlet4preview.http.HttpServletRequest;
 import org.apache.commons.lang3.StringUtils;
 import org.slf4j.Logger;
@@ -88,16 +86,24 @@ public class JwtTokenTools {
      */
     public static Claims parseJwt(String token, JwtProperties jwtProperties) {
         //解析Jwt字符串
-        Claims claims = Jwts.parser()
-                //验证秘钥--秘钥需和生成jwt的秘钥完全保持一致
-                //(本人觉得这里它肯定通过某种方式知道其加密算法,或者根本不需要知道加密算法)
-                .setSigningKey(DatatypeConverter.parseBase64Binary(jwtProperties.getSecret()))
-                //验证对应的标准claim
-                .requireAudience(jwtProperties.getAud())//不要可以的仅仅只是多验证点东西而已
-                .requireIssuer(jwtProperties.getIss())//不要可以的仅仅只是多验证点东西而已
-                //获取声明信息
-                .parseClaimsJws(token.replace(CommonDic.TOKEN_PREFIX, ""))
-                .getBody();
+        Claims claims;
+        try {
+            claims = Jwts.parser()
+                    //验证秘钥--秘钥需和生成jwt的秘钥完全保持一致
+                    //(本人觉得这里它肯定通过某种方式知道其加密算法,或者根本不需要知道加密算法)
+                    .setSigningKey(DatatypeConverter.parseBase64Binary(jwtProperties.getSecret()))
+                    //验证对应的标准claim
+                    .requireAudience(jwtProperties.getAud())//不要可以的仅仅只是多验证点东西而已
+                    .requireIssuer(jwtProperties.getIss())//不要可以的仅仅只是多验证点东西而已
+                    //获取声明信息
+                    .parseClaimsJws(token.replace(CommonDic.TOKEN_PREFIX, ""))
+                    .getBody();
+        } catch (ExpiredJwtException e) {
+            //处理因为jwt过期造成的异常,按理来说是不可能过期的,但是实际却是会抛出异常,这里处理异常
+            //JWT expired at 2018-12-18T19:09:59Z. Current time: 2018-12-19T09:33:14Z, a difference
+            //of 51795755 milliseconds. Allowed clock skew: 0 milliseconds.
+            claims = null;
+        }
         return claims;
     }
 

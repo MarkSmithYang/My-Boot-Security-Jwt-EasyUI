@@ -14,19 +14,6 @@
     <!--注意需要在script标签里写th:inline="none",才能正常解析传递过的指定格式的json数据-->
     <script th:inline="none">
         $(document).ready(function () {
-            //通过用户名查询用户数据
-            function query(){
-                //使用easyUI的方法获取值
-                var value = $("#search").textbox('getValue');
-                //解决后台获取数据乱码问题
-                var username = encodeURI(value);
-                //这个查询方式=====通过#dg===queryEmp?ename=empname
-                $('#dg').datagrid('load', {
-                    //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
-                    username: username
-                });
-            }
-
             $("#dg").datagrid({
                 //分页全部使用默认值,懒得设置了
                 title: '用户信息表',
@@ -74,7 +61,7 @@
                             ids = ids + array[i].id + ",";
                         }
                         //去除字符串末尾的逗号(,)
-                        var s = ids.substring(0,ids.length-1);
+                        var s = ids.substring(0, ids.length - 1);
                     }
                 }, '-', {
                     //让边框消失
@@ -244,13 +231,68 @@
         //     })
         // })
     </script>
+    <!--实现搜索框搜索点击事件和回车键查询,以及清空搜索框后列表恢复-->
+    <script>
+        //弄了好久,终于可以了,propertychange是专门用来兼容ie的,这个是easyui的写法
+        //这里就是只要输入框input的值发生变化,就立即触发就能很明确知道输入框的值是不是空
+        $(function () {
+            $("#search").textbox('textbox').bind("input propertychange", function () {
+                var value = $("#search").textbox('getText');
+                //判断清空搜索框的时候进行用户名为空的参数的列表查询
+                if (value == "" || value == null || value == undefined) {
+                    $('#dg').datagrid('load', {
+                        //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
+                        //http://localhost:8888/queryUserList?username=xxx&page=1&rows=10
+                        //这里设置这个相当于拼接了一个参数去请求查询列表的接口
+                        username: ''
+                    });
+                }
+            })
+        });
+
+        //全局判断按键(按回车)-->通过回车键也能触发搜索操作
+        $(document).keypress(function (e) {
+            var eCode = e.keyCode ? e.keyCode : e.which ? e.which : e.charCode;
+            //回车键操作
+            if (eCode == 13) {
+                //调用搜索方法搜索
+                query();
+            }
+        });
+
+        //通过用户名查询用户数据
+        function query() {
+            //使用easyUI的方法获取值
+            var value = $("#search").textbox('getText');
+            //判断搜索框的值是否为空
+            if (value == "" || value == null || value == undefined) {
+                value = '';
+            }
+            //解决后台获取数据乱码问题
+            var username = encodeURI(value);
+            //通过这个可以请
+            $('#dg').datagrid('load', {
+                //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
+                //http://localhost:8888/queryUserList?username=xxx&page=1&rows=10
+                //这里设置这个相当于拼接了一个参数去请求查询列表的接口
+                username: username
+            });
+        }
+    </script>
 </head>
 <body class="easyui-panel" title="<center><b style='font-size: medium;color: #0E2D5F'>后台用户管理系统</b></center>"
       data-options="fit:true">
 <div class="easyui-layout" data-options="fit:true">
-    <div data-options="region:'north',border:false" style="height:30px;background:#B3DFDA;padding:5px;" align="right">
-        搜索<input id="search" placeholder="输入用户名搜索" class="easyui-textbox" align="right" iconCls="icon-search"
-                 style="width: 130px;height: 22px;" onblur="query()">
+    <!------------------------------------------------------------------------------------------------------->
+    <div data-options="region:'north',border:false" style="height:35px;background:#B3DFDA;padding:5px;" align="right">
+        <!--autocomplete="on" 用来控制刷新页面时,输入框里的值是否清除,off时会清除,on不会-->
+        <!--data-options="prompt:'用户名'" 这个用来设置easyui情况的easyui-textbox的搜索框的提示,
+        原始的那个在这里不生效-->
+        <input id="search" class="easyui-textbox" type="text" align="right" autocomplete="off"
+               data-options="prompt:'用户名'" iconCls="icon-search"
+               style="width: 130px;height: 30px;">
+        <a href="javascript:void(0)" style="width:50px;height: 30px" class="easyui-linkbutton"
+           onclick="query()">搜索</a>
     </div>
     <!------------------------------------------------------------------------------------------------------->
     <div data-options="region:'west',split:true,hideCollapsedContent:false,collapsed:false"
@@ -275,16 +317,6 @@
                     </li>
                     <li><span>File2</span></li>
                 </ul>
-            </div>
-            <div title="About Accordion" iconCls="icon-ok" style="overflow:auto;padding:10px;">
-                <h3 style="color:#0099FF;">Accordion for jQuery</h3>
-                <p>Accordion is a part of easyui framework for jQuery. It lets you define your accordion component on
-                    web page
-                    more
-                    easily.</p>
-            </div>
-            <div title="About easyui" iconCls="icon-reload" selected="true" style="padding:10px;">
-                easyui help you build your web page easily
             </div>
         </div>
     </div>
