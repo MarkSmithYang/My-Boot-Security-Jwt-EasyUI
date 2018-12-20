@@ -7,8 +7,8 @@ import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.common.JwtProperties;
 import com.yb.boot.security.jwt.common.ResultInfo;
 import com.yb.boot.security.jwt.model.SysUser;
+import com.yb.boot.security.jwt.request.AddUserModel;
 import com.yb.boot.security.jwt.request.RefreshToken;
-import com.yb.boot.security.jwt.request.UserRegister;
 import com.yb.boot.security.jwt.request.UserRequest;
 import com.yb.boot.security.jwt.response.JwtToken;
 import com.yb.boot.security.jwt.response.UserDetailsInfo;
@@ -40,12 +40,11 @@ import java.io.IOException;
 import java.io.Serializable;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 /**
  * author yangbiao
- * Description:控制层代码
+ * Description:控制层代码--->很多接口都被删除了,具体的去看有swagger的那个安全系统
  * date 2018/11/30
  */
 @Controller
@@ -60,8 +59,6 @@ import java.util.concurrent.TimeUnit;
 public class SecurityJwtController {
     public static final Logger log = LoggerFactory.getLogger(SecurityJwtController.class);
 
-    @Autowired
-    private JwtProperties jwtProperties;
     @Autowired
     private SecurityJwtService securityJwtService;
     @Autowired
@@ -81,13 +78,6 @@ public class SecurityJwtController {
     @GetMapping("/index")
     public String index() {
         return "/index";
-    }
-
-    //    @PreAuthorize("isAuthenticated()")
-    @PostMapping("/addUser")
-    public String addUser(@Valid UserRegister userRegister) {
-        securityJwtService.addUser(userRegister);
-        return "/layout";
     }
 
     //如果想要走自己写的登出接口,接口不能为/logout,这个默认会走配置那里的.logout()--配置已删除
@@ -112,30 +102,35 @@ public class SecurityJwtController {
 
     @GetMapping("/queryUserList")
     @ResponseBody
-    public JSONObject queryUserList(@RequestParam(defaultValue = "1") int page,@RequestParam(defaultValue = "25") int rows,
+    public JSONObject queryUserList(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "25") int rows,
                                     @RequestParam(defaultValue = "") String username) {
-        JSONObject result = securityJwtService.queryUserList(page,rows,username);
+        JSONObject result = securityJwtService.queryUserList(page, rows, username);
         return result;
+    }
+
+    //@PreAuthorize("isAuthenticated()")
+    @PostMapping("/addUser")
+    @ResponseBody
+    public JSONObject addUser(@Valid AddUserModel userRegister) {
+        securityJwtService.addUser(userRegister);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success("操作成功"));
     }
 
     @PostMapping("/updateUser")
     @ResponseBody
-    public JSONObject updateUser(@RequestParam(defaultValue = "") @NotBlank(message = "id不能为空")
-                                     //因为页面设置的最多能选20行,也就是20个id,所以
-                                     //长度不会超过20*36+20(20个逗号实际是19,id的UUID的长度为36实为32)
-                                     @Length(max = 750, message = "用户id过长") String id) {
-        String result = securityJwtService.updateUser(id);
-        return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
+    public JSONObject updateUser(@Valid AddUserModel addUserModel) {
+        securityJwtService.updateUser(addUserModel);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success("操作成功"));
     }
 
     @PostMapping("/deleteUser")
     @ResponseBody
     public JSONObject deleteUser(@RequestParam(defaultValue = "") @NotBlank(message = "id不能为空")
-                                     //因为页面设置的最多能选20行,也就是20个id,所以
-                                     //长度不会超过20*36+20(20个逗号实际是19,id的UUID的长度为36实为32)
-                                     @Length(max = 750, message = "用户id过长") String ids) {
-        String result = securityJwtService.deleteUser(ids);
-        return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
+                                 //因为页面设置的最多能选20行,也就是20个id,所以
+                                 //长度不会超过20*36+20(20个逗号实际是19,id的UUID的长度为36实为32)
+                                 @Length(max = 750, message = "用户id过长") String ids) {
+        securityJwtService.deleteUser(ids);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success("操作成功"));
     }
 
     @GetMapping("/findUserById")
@@ -147,116 +142,6 @@ public class SecurityJwtController {
         //ConstraintViolationException这个捕捉中文的异常,通过设置参数默认值为空字符串,能够正常获取到中文提示
         SysUser result = securityJwtService.findUserById(id);
         return ResultInfo.success(result);
-    }
-
-    @GetMapping("/deleteUserById")
-    public ResultInfo<String> deleteUserById(@NotBlank(message = "id不能为空")
-                                             @Length(max = 100, message = "用户id过长")
-                                             @RequestParam(defaultValue = "") String id) {
-        //实测通过swagger不填写id的时候会先抛出MissingServletRequestParameterException异常的id不存在的英文
-        //所以根本来不到注解@NotBlank这里,刚开始还以为是@NotBlank抛出的,竟然没有中文,实测发现还没有到
-        //ConstraintViolationException这个捕捉中文的异常,通过设置参数默认值为空字符串,能够正常获取到中文提示
-        securityJwtService.deleteUserById(id);
-        return ResultInfo.success("操作成功");
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    //@Secured("admin,manager")//不支持Spring EL表达式
-    //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
-    @PreAuthorize("hasAuthority('query')")
-    @GetMapping("/yes")
-    @ResponseBody
-    public ResultInfo<List<String>> yes() {
-        return ResultInfo.success(new ArrayList<String>() {{
-            add("yes");
-            add(LoginUserUtils.getUsername());
-            System.err.println(LoginUserUtils.getUserDetails());
-        }});
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    //hasPermission需要自定义来实现,反正SimpleGrantedAuthority构造名称就叫role
-    //所以可以把权限当成角色来看就行了,只是有些角色含有很多小角色而已,为了好看
-    //一点可以使用hasAuthority代替hasRole,但是效果都一样,而且自动补全会把所有的
-    //权限角色模块都显示出来供你选择
-    @PreAuthorize("hasAuthority('update')")
-    @GetMapping("/hello")
-    @ResponseBody
-    public ResultInfo<List<String>> hello() {
-        return ResultInfo.success(new ArrayList<String>() {{
-            add("hello");
-        }});
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    @PreAuthorize("hasAuthority('" + CommonDic.ROLE_ + "admin')")//hasAuthority和hasRole功能一样
-    @GetMapping("/world")
-    @ResponseBody
-    public ResultInfo<List<String>> world() {
-        return ResultInfo.success(new ArrayList<String>() {{
-            add("world");
-        }});
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    //@Secured("admin,manager")//不支持Spring EL表达式
-    //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
-    @PreAuthorize("hasAuthority('" + CommonDic.MODULE_ + "center')")//方法执行之前执行认证
-    @GetMapping("/users")
-    @ResponseBody
-    public ResultInfo<List<String>> users() {
-        return ResultInfo.success(new ArrayList<String>() {{
-            add("rose");
-            add("jack");
-            add("mark");
-        }});
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    //@Secured("admin,manager")//不支持Spring EL表达式
-    //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
-    //@PreAuthorize("principal.username.equals(#username)")//通过principal的写法就是解析不了表达式
-    //@PreAuthorize("principal.username.toString().equals(#username)")//字符串化也不得行
-    @PreAuthorize("authentication.name.equals(#username)")
-    //这个直接在安全上下文取的就可以,或许是因为解析token的时候,只设置了SecurityContent而没有UserDetails
-    @GetMapping("/list")
-    @ResponseBody
-    public ResultInfo<List<String>> list(@RequestParam @Length(min = 10, message = "长度过长") String username) {
-        return ResultInfo.success(new ArrayList<String>() {{
-            add("rose1");
-            add("jack2");
-            add("mark3");
-        }});
-    }
-
-    //@PreFilter和@PostFilter用来对集合类型的参数或者返回值进行过滤
-    //@Secured("admin,manager")//不支持Spring EL表达式
-    //@PostAuthorize("hasAuthority('')")//方法调用之后执行认证
-    @GetMapping("/getMessage")
-    @ResponseBody
-    public ResultInfo<String> getMessage() {
-        return ResultInfo.success("我不需要权限就可以访问哦,在接口方法上放开,而不是通过antMatch");
-    }
-
-    @PreAuthorize("isAuthenticated()")
-    @PostMapping("/refreshToken")
-    @ResponseBody
-    public ResultInfo<JwtToken> refreshToken(@Valid @RequestBody RefreshToken refreshToken, HttpServletResponse response) {
-        //判断token的合法性并解析出用户详细信息
-        UserDetailsInfo detailsInfo = JwtTokenTools.getUserByJwt(refreshToken.getAccessToken(), jwtProperties);
-        //生成token信息
-        String accessToken = JwtTokenTools.createAccessToken(detailsInfo, jwtProperties.getExpireSeconds(), response, jwtProperties);
-        //封装token返回
-        if (StringUtils.isNotBlank(accessToken)) {
-            JwtToken jwtToken = new JwtToken();
-            jwtToken.setAccessToken(CommonDic.TOKEN_PREFIX + accessToken);
-            jwtToken.setRefreshToken(CommonDic.TOKEN_PREFIX + refreshToken.getRefreshToken());
-            jwtToken.setTokenExpire(jwtProperties.getExpireSeconds());
-            //返回数据
-            return ResultInfo.success(jwtToken);
-        }
-        return ResultInfo.error("刷新token失败");
-
     }
 
     @PostMapping("/frontLogin")

@@ -4,10 +4,8 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
-import com.yb.boot.security.jwt.model.Permission;
-import com.yb.boot.security.jwt.model.Role;
 import com.yb.boot.security.jwt.repository.SysUserRepository;
-import com.yb.boot.security.jwt.request.UserRegister;
+import com.yb.boot.security.jwt.request.AddUserModel;
 import com.yb.boot.security.jwt.request.UserRequest;
 import com.yb.boot.security.jwt.auth.other.CustomAuthenticationProvider;
 import com.yb.boot.security.jwt.auth.other.MyUsernamePasswordAuthenticationToken;
@@ -28,7 +26,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.jpa.domain.Specification;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -40,6 +37,7 @@ import org.springframework.transaction.annotation.Transactional;
 import javax.persistence.criteria.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
+import javax.validation.Valid;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -57,8 +55,6 @@ public class SecurityJwtService {
     private JwtProperties jwtProperties;
     @Autowired
     private SysUserRepository sysUserRepository;
-    @Autowired
-    private BCryptPasswordEncoder bCryptPasswordEncoder;
     @Autowired
     private RedisTemplate<String, Serializable> redisTemplate;
     @Autowired
@@ -168,20 +164,37 @@ public class SecurityJwtService {
     }
     //-------------------------------------------------------------------------------------------------------
 
+    /**
+     * 添加用户
+     */
     @Transactional(rollbackFor = Exception.class)
-    public void addUser(UserRegister userRegister) {
-        //校验密码与确认密码是否一致(虽然前段有做,但是后端必不可少才是正确的选择)
-        if (!userRegister.checkPasswordEquals()) {
-            ParameterErrorException.message("密码与确认密码不一致");
-        }
+    public void addUser(AddUserModel userRegister) {
         //封装用户基本信息--没有弄头像信息
         SysUser sysUser = new SysUser();
+        //调用抽取方法处理信息
+        insertUser(userRegister, sysUser);
+    }
+
+    /**
+     * 添加用户抽取代码
+     */
+    public void insertUser(AddUserModel userRegister, SysUser sysUser) {
+        if (sysUser == null) {
+            log.info("insertUser方法里的sysUser为空");
+            ParameterErrorException.message("操作失败");
+        }
+        //封装数据
         sysUser.setUserFrom(userRegister.getFrom());
         sysUser.setUsername(userRegister.getUsername());
-        //加密用户密码
-        sysUser.setUserPassword(bCryptPasswordEncoder.encode(userRegister.getPassword()));
         //封装用户基础信息
-        UserInfo userInfo = new UserInfo();
+        UserInfo userInfo = null;
+        //判断sysUser里的userInfo是否为空
+        if (sysUser.getUserInfo() == null) {
+            userInfo = new UserInfo();
+        } else {
+            userInfo = sysUser.getUserInfo();
+        }
+        //封装数据
         userInfo.setDepartment(userRegister.getDepartment());
         userInfo.setPhone(userRegister.getPhone());
         userInfo.setPosition(userRegister.getPosition());
@@ -191,65 +204,7 @@ public class SecurityJwtService {
         userInfo.setSysUser(new SysUser(sysUser.getId()));
         //把用户基础信息放进用户基本信息
         sysUser.setUserInfo(userInfo);
-        //构造容器
-        Set<Role> roleSet = new HashSet<>();
-        Set<Permission> pSet1 = new HashSet<>();
-        Set<Permission> pSet2 = new HashSet<>();
-        //构造权限对象
-        Permission permission1 = new Permission("pp1", "屁屁1");
-        Permission permission2 = new Permission("pp2", "屁屁2");
-        Permission permission3 = new Permission("pp3", "屁屁3");
-        //添加一个权限到集合
-        pSet2.add(permission1);
-        //添加三个权限到集合
-        ///pSet1.add(permission1);
-        // 实测如果某权限有多个角色拥有,那么处理起来超级麻烦,因为同一个对象,你更改之后,
-        //对象信息会被共享,也就是对象会以最后的修改为准,所以前后信息就会有问题,就会造成
-        //某角色的权限的角色集合里处理这个角色对象之外,还有其他的角色对象在里面,这样的话
-        //jpa(Hibernate)就会报错,说另一个对象的id找不到,因为它要通过id去查询并关联,目前
-        //想到的唯一的办法就是先把含有相同权限的角色保存之后再关联另一个,可想这个得有多么繁复
-        //所以还是那句话,尽量不要出现这种情况的设计,最好是角色不和权限关联,把角色假想成
-        //多个细粒度的权限permission的集合,某个角色就含有那些权限(假想),可以添加描述角色的字段
-        //可以更清楚知道角色假想的权限,这样不去实际关联权限,可以很大的减少其复杂度和提高性能和代码量
-        //以及出错的风险-->同理模块与权限也是如此
-        pSet1.add(permission2);
-        pSet1.add(permission3);
-        //构造角色对象信息并把对应的权限封装进去
-        Role role1 = new Role("role1", "角色1", pSet2);
-        //-----------------------------------------------------------------------------------------
-        //角色对应权限需要封装其角色,为了生成中间表信息--当然了你如果知道了那些角色对应那些权限
-        //可以先封装,个人角色这样遍历的方式比较好,既然知道了角色对应的权限,就可以开始封装关联了
-        pSet2.forEach(s -> {
-            //取出权限关联的角色集合,把新关联的角色添加进去即可
-            Set<Role> roles = s.findRoles();
-            roles.add(new Role(role1.getId()));
-        });
-        //注意--->当多个角色拥有相同的权限的时候,需要把多个角色封装到集合再和权限关联,不然就像我
-        //这里一样遍历,就会把关联两个角色的权限里的角色id覆盖为最后的值,前面的就被覆盖了
-        Role role2 = new Role("role2", "角色2", pSet1);
-        //角色对应权限需要封装其角色,为了生成中间表信息
-        pSet1.forEach(s -> {
-            //因为集合在实体已经实例化了,所以取出来就可以直接使用
-            //取出权限关联的角色集合,把新关联的角色添加进去即可
-            Set<Role> roles = s.findRoles();
-            //原本想在这通过获取权限是否含有角色来处理,但是不能提供对应的get方法,因为
-            //如果提供的话,就会造成获取关联的数据的时候造成递归等json解析异常,所以把get
-            //方法改了个名字就变成普通方法了,实测就不会出现问题了
-            roles.add(new Role(role2.getId()));
-        });
-        //-----------------------------------------------------------------------------------------
-
-        //封装sysUser信息,目的是为了生成中间表/外键信息
-        role1.findUsers().add(new SysUser(sysUser.getId()));
-
-        //这里应该是重写父类方法操作的多态(知道可以这样用,但是没仔细研究)
-        role2.findUsers().add(new SysUser(sysUser.getId()));
-
-        //把角色封装到集合roleSet再封装到sysUser
-        roleSet.add(role1);
-        roleSet.add(role2);
-        sysUser.setRoles(roleSet);
-        //保存用户信息---权限相关的信息,通过后面超管添加
+        //因为这里只是添加一些用户的基础信息,所以不需要处理权限角色等
         try {
             sysUserRepository.save(sysUser);
         } catch (Exception e) {
@@ -258,17 +213,13 @@ public class SecurityJwtService {
             } catch (Exception e1) {
                 log.info("用户信息第二次保存失败=" + e1.getMessage());
                 //抛出异常-->回滚事务
-                ParameterErrorException.message("用户添加失败");
+                ParameterErrorException.message("操作失败");
             }
         }
     }
 
     /**
      * 查询用户信息列表(因为数据少,未分页)
-     *
-     * @param page
-     * @param rows
-     * @param username
      */
     public JSONObject queryUserList(int page, int rows, String username) {
         //构建Pageable
@@ -292,7 +243,14 @@ public class SecurityJwtService {
                 jsonObject.put("department", s.getUserInfo() == null ? null : s.getUserInfo().getDepartment());
                 jsonObject.put("position", s.getUserInfo() == null ? null : s.getUserInfo().getPosition());
                 jsonObject.put("phone", s.getUserInfo() == null ? null : s.getUserInfo().getPhone());
-                jsonObject.put("from", s.getUserFrom());
+                //翻译from为中文展示
+                if (CommonDic.FROM_FRONT.equals(s.getUserFrom())) {
+                    jsonObject.put("from", "前台");
+                } else if (CommonDic.FROM_BACK.equals(s.getUserFrom())) {
+                    jsonObject.put("from", "后台");
+                } else {
+                    jsonObject.put("from", null);
+                }
                 jsonObject.put("headUrl", s.getHeadUrl());
                 array.add(jsonObject);
             });
@@ -313,52 +271,33 @@ public class SecurityJwtService {
     }
 
     /**
-     * 通过用户id删除用户信息
-     */
-    @Transactional(rollbackFor = Exception.class)
-    public void deleteUserById(String id) {
-        //判断用户是否存在,存在才删除--(调用上面的方法)
-        SysUser userById = findUserById(id);
-        if (userById == null) {
-            ParameterErrorException.message("id不能正确");
-        }
-        //删除用户信息-->开始因为没有设置级联删除,所以会报错,更改级联操作为ALL(包含级联删除)的时候,
-        //实测成功删除,因为添加的时候是级联添加,所以这样级联删除比较好,因为不级联删除就需要一层一层
-        //先去删除中间表需要做许多次的访问数据库删除操作,特别麻烦,当然了可以根据自己的需要更改策略
-        try {
-            sysUserRepository.deleteById(id);
-        } catch (Exception e) {
-            try {
-                sysUserRepository.deleteById(id);
-            } catch (Exception e1) {
-                log.info("第二次删除异常=" + e1.getMessage());
-                //抛出异常回滚事务
-                ParameterErrorException.message("操作失败");
-            }
-        }
-    }
-
-
-    /**
      * 根据用户id修改在前端页面展示的信息(因为这个和添加的时候是一样的,其他的信息是添加不了的)
      */
     @Transactional(rollbackFor = Exception.class)
-    public String updateUser(String id) {
-        return null;
+    public void updateUser(@Valid AddUserModel addUserModel) {
+        //判断id是否为空(因为添加的时候前端是不会传id的,所以没有非空判断)
+        if(StringUtils.isBlank(addUserModel.getId())){
+            log.info("编辑(修改)数据的id为空");
+            ParameterErrorException.message("操作失败");
+        }
+        //获取id查询用户信息确认用户存在再修改
+        Optional<SysUser> byId = sysUserRepository.findById(addUserModel.getId());
+        //调用抽取的添加用户的方法处理信息
+        insertUser(addUserModel, byId.isPresent() ? byId.get() : null);
     }
 
     /**
      * 根据用户id删除用户相关信息
      */
-    public String deleteUser(String ids) {
+    public void deleteUser(String ids) {
         //处理id(拼接的多个id),id的非空判断已经由注解实现
         String[] split = ids.split(",");
         //因为不管字符串含不含有逗号,都不会报错,只要字符串不空,切割的数组也不能空,所以
         List<String> list = Arrays.asList(split);
-       //通过id查询用户是否存在,存在则删除
+        //通过id查询用户是否存在,存在则删除
         List<SysUser> users = sysUserRepository.findByIdIn(list);
         //判断id是否都能查询出用户
-        if(CollectionUtils.isNotEmpty(users) && list.size()==users.size()){
+        if (CollectionUtils.isNotEmpty(users) && list.size() == users.size()) {
             //说明传递过来的id都是正确的--删除信息
             try {
                 sysUserRepository.deleteAll(users);
@@ -366,12 +305,11 @@ public class SecurityJwtService {
                 try {
                     sysUserRepository.deleteAll(users);
                 } catch (Exception e1) {
-                   log.info("删除失败="+e1.getMessage());
-                   ParameterErrorException.message("操作失败");
+                    log.info("删除失败=" + e1.getMessage());
+                    ParameterErrorException.message("操作失败");
                 }
             }
         }
-        return "操作成功";
     }
 
 }

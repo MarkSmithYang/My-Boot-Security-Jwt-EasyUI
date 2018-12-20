@@ -52,6 +52,9 @@
 .icon-menu{
 	background:url('icons/menu.png') no-repeat center center;
 }
+.icon-head{
+	background:url('icons/head.png') no-repeat center center;
+}
 .icon-phone{
 	background:url('icons/phone.png') no-repeat center center;
 }

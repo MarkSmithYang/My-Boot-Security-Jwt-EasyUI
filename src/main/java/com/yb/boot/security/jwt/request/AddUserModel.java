@@ -4,15 +4,25 @@ import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
+
+import javax.persistence.Basic;
+import javax.persistence.FetchType;
+import javax.persistence.Lob;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 
 /**
- * Description:用户注册(添加)信息封装类
+ * Description:用户添加信息封装类
  * author yangbiao
  * date 2018/12/12
  */
-public class UserRegister {
+public class AddUserModel {
+
+    /**
+     * 用户名
+     */
+    @Length(max = 50, message = "用户id过长")
+    private String id;
 
     /**
      * 用户名
@@ -20,20 +30,6 @@ public class UserRegister {
     @Length(max = 20, message = "用户名不能大于20字")
     @NotBlank(message = "用户名不能为空")
     private String username;
-
-    /**
-     * 用户密码
-     */
-    @Length(min = 3, max = 16, message = "密码只允许6到16个字符")
-    @NotBlank(message = "密码不能为空")
-    private String password;
-
-    /**
-     * 用户确认密码
-     */
-    @Length(min = 3, max = 16, message = "确认密码只允许6到16个字符")
-    @NotBlank(message = "确认密码不能为空")
-    private String rePassword;
 
     /**
      * 用户部门
@@ -61,11 +57,12 @@ public class UserRegister {
     @NotBlank(message = "用户类型不能为空")
     private String from;
 
-    /**
-     * 校验密码和确认密码是否一致
-     */
-    public boolean checkPasswordEquals() {
-        return StringUtils.isNotBlank(this.password) ? this.password.equals(this.rePassword) : false;
+    public String getId() {
+        return id;
+    }
+
+    public void setId(String id) {
+        this.id = id;
     }
 
     public String getUsername() {
@@ -77,29 +74,6 @@ public class UserRegister {
             username = username.trim();
         }
         this.username = username;
-    }
-
-    public String getPassword() {
-        return password;
-    }
-
-    public void setPassword(String password) {
-        if (StringUtils.isNotBlank(password)) {
-            password = password.trim();
-        }
-        this.password = password.trim();
-
-    }
-
-    public String getRePassword() {
-        return rePassword;
-    }
-
-    public void setRePassword(String rePassword) {
-        if (StringUtils.isNotBlank(rePassword)) {
-            rePassword = rePassword.trim();
-        }
-        this.rePassword = rePassword;
     }
 
     public String getDepartment() {
@@ -136,9 +110,9 @@ public class UserRegister {
     }
 
     public String getFrom() {
-        if ("1".equals(this.from)) {
+        if ("1".equals(this.from) || "前台".equals(this.from)) {
             return CommonDic.FROM_FRONT;
-        } else if ("2".equals(this.from)) {
+        } else if ("2".equals(this.from) || "后台".equals(this.from)) {
             return CommonDic.FROM_BACK;
         } else {
             ParameterErrorException.message("未知的用户类型");

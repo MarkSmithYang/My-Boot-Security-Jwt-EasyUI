@@ -23,6 +23,7 @@
                 loadMsg: '加载中',
                 //如果为true，则显示一个行号列
                 rownumbers: true,
+                fitColumns:true,
                 //如果为true，则在DataGrid控件底部显示分页工具栏
                 pagination: true,
                 pageNumber: 1,
@@ -31,13 +32,12 @@
                 //这样好计算全选之后拼接id的长度,接口好做容错判断
                 pageList: [10, 20],
                 columns: [[
-                    {field: 'id', title: '', width: '9%', align: 'center', checkbox: true},
-                    {field: 'username', title: '用户名', width: '9%', align: 'center'},
-                    {field: 'department', title: '部门', width: '9%', align: 'center'},
-                    {field: 'position', title: '职位', width: '9%', align: 'center'},
-                    {field: 'phone', title: '电话', width: '9%', align: 'center'},
-                    {field: 'from', title: '系统', width: '9%', align: 'center'},
-                    {field: 'headUrl', title: '头像', width: '9%', align: 'center'}
+                    {field: 'id', title: '', width: '15%', align: 'center', checkbox: true},
+                    {field: 'username', title: '用户名', width: '15%', align: 'center'},
+                    {field: 'department', title: '部门', width: '15%', align: 'center'},
+                    {field: 'position', title: '职位', width: '15%', align: 'center'},
+                    {field: 'phone', title: '电话', width: '15%', align: 'center'},
+                    {field: 'from', title: '系统', width: '15%', align: 'center'},
                 ]],
                 //设置按钮
                 toolbar: [{
@@ -46,7 +46,13 @@
                     iconCls: 'icon-add',
                     text: '新增',
                     handler: function () {
-                        alert('编辑按钮')
+                        //先清空表数据--实测,如果点击了编辑取消后,点击新增会有数据回显bug(实测)
+                        reset();
+                        //隐藏保存按钮
+                        $("#update").hide();
+                        //展示想要的按钮,不然会造成按钮消失
+                        $("#add").show();
+                        $("#win").window('open');
                     }
                 }, '-', {
                     //让边框消失
@@ -54,29 +60,26 @@
                     iconCls: 'icon-edit',
                     text: '编辑',
                     handler: function () {
-                        //获取选中行
                         var array = $("#dg").datagrid("getSelections");
-                        //只有只选中一行的时候才允许修改
-                        if (array.length == 1) {
-                            //表单提交 会获取表单的所有信息
-                            $('#ff').form('submit', {
-                                url: 'updateUser/' + id,
-                                methods: 'get',
-                                success: function (data) {
-                                    data = JSON.parse(data);
-                                    if (data.code == 1) {
-                                        //调用query()方法查询数据,只要搜索框没有值,就会查询所有
-                                        query();
-                                        $.messager.alert('提示消息', '修改成功');
-                                        $("#w").window('close');
-                                    } else {
-                                        $.message.alert('错误消息', data.message);
-                                    }
-                                }
-                            });
-                        } else {
-                            $.messager.alert('提示消息', '请选择一行进行操作');
+                        if (array == null || array == undefined || array == '' || array.length == 0) {
+                            $.messager.alert('提示消息', "请先选择数据再操作");
+                            return;
                         }
+                        //判断是否是多选操作
+                        if (array.length > 1) {
+                            $.messager.alert('提示消息', "请先选择一行数据操作");
+                            return;
+                        }
+                        //获取这行数据
+                        var row = array[0];
+                        //隐藏添加按钮
+                        $("#add").hide();
+                        //展示想要的按钮,不然会造成按钮消失
+                        $("#update").show();
+                        //打开窗口
+                        $("#win").window('open');
+                        //回显被选中的数据到弹框(也是新增框)
+                        $("#fo").form('load', row);
                     }
                 }, '-', {
                     //让按钮边框消失
@@ -86,174 +89,97 @@
                     handler: function () {
                         //获取被选中的行对象
                         var array = $("#dg").datagrid("getSelections");
-                        //声明一个变量,用以拼接id
-                        var ids = "";
-                        for (var i = 0; i < array.length; i++) {
-                            ids = ids + array[i].id + ",";
+                        if (array == null || array == undefined || array == '' || array.length == 0) {
+                            $.messager.alert('提示消息', '请选择数据再操作');
+                            return;
                         }
-                        //去除字符串末尾的逗号(,)
-                        ids = ids.substring(0, ids.length - 1);
+                        //确认删除
+                        $.messager.confirm('确认对话框', '您确定要删除吗', function (r) {
+                            if (r) {
+                                //声明一个变量,用以拼接id
+                                var ids = "";
+                                for (var i = 0; i < array.length; i++) {
+                                    ids = ids + array[i].id + ",";
+                                }
+                                //去除字符串末尾的逗号(,)
+                                ids = ids.substring(0, ids.length - 1);
+                                //通过ajax来删除数据
+                                $.ajax({
+                                    url: '/deleteUser',
+                                    method: 'post',
+                                    dataType: 'json',
+                                    data: 'ids=' + ids,
+                                    success: function (data) {
+                                        if (data.status == 200) {
+                                            query();
+                                            $.messager.alert('提示消息', '操作成功');
+                                        } else {
+                                            query();
+                                            $.messager.alert('错误消息', data.message);
+                                        }
+                                    }
+                                });
+                            }
+                        });
                     }
                 }]
             });
-        })
-    </script>
-    <script>
-        //重写时间框
-        $.fn.datebox.defaults.formatter = function (date) {
-            var y = date.getFullYear();
-            var m = date.getMonth() + 1;
-            var d = date.getDate();
-            return y + '-' + m + '-' + d;
-        }
+        });
 
-        //时间戳的转换
-        function dataFormatter(value, row, index) {
-            var da = value;
-            da = new Date(da);
-            var year = da.getFullYear() + '年';
-            var month = da.getMonth() + 1 + '月';
-            var date = da.getDate() + '日';
-            return ([year, month, date].join('-'));
-        }
-
-        //value：字段值,rowData：行记录数据,rowIndex: 行索引
-        //从数据库中获取一个标记  在前台展示是要展示标记所代表的含义
-        function sexFormatter(value, row, index) {
-            if (value == 1) {
-                return '男';
-            } else {
-                return '女';
-            }
-        }
-
-        //修改清除
-        function clearUpdate() {
-            $('#ff').form('clear');
-        }
-
-        //新增清除
-        function clearAdd() {
-            $('#zz').form('clear');
-        }
-
-        //查询触发的函数
-        function queryForm() {
-            //$("input[name='empname']").val(); 获取的是jQuery对象  要是用jQuery的方法获取值
-            //使用easyUI的方法获取值
-            var username = $("#search").textbox('getValue');
-
-            //解决后台获取数据乱码问题
-            var name1 = encodeURI(username);
-            //这个查询方式=====通过#dg===queryEmp?ename=empname
-            $('#dg').datagrid('load', {
-                //======easyui所有的方法调用   控件对象.控件名称('方法名','方法参数')
-                ename: name1
-
+        //添加用户
+        function userAdd() {
+            $('#fo').form('submit', {
+                url: '/addUser',
+                success: function (data) {
+                    data = JSON.parse(data);
+                    if (data.status == 200) {
+                        //操作成功,去查询列表
+                        query();
+                        $("#win").window('close');
+                        $.messager.alert('提示消息', '操作成功');
+                    } else {
+                        query();
+                        $("#win").window('close');
+                        $.messager.alert('错误消息', data.message);
+                    }
+                }
             });
         }
 
-        //修改的方法
-        function updateForm() {
-            //获取选中行的所有信息 以便下面发起请求获取数据id
-            var selectedRow = $("#dg").datagrid("getSelected");
-            //表单提交 会获取表单的所有信息
-            $('#ff').form('submit', {
-                url: 'updateEmp/' + selectedRow.empno, //selectedRow.empno 获取选中行的数据id
-                success: function (msg) {
-                    msg = JSON.parse(msg);
-                    if (msg.code == 1) {
-                        queryForm()
-                        $.messager.alert('提示消息', '修改成功');
-                        $("#w").window('close');
-                    } else {
-                        $.message.alert('错误消息', msg.message);
+        //编辑用户
+        function userUpdate() {
+            //获取选中行
+            var array = $("#dg").datagrid("getSelections");
+            //只有只选中一行的时候才允许修改
+            if (array.length == 1) {
+                //表单提交 会获取表单的所有信息
+                $('#fo').form('submit', {
+                    url: 'updateUser/',
+                    success: function (data) {
+                        data = JSON.parse(data);
+                        if (data.status == 200) {
+                            //调用query()方法查询数据,只要搜索框没有值,就会查询所有
+                            query();
+                            $("#win").window('close');
+                            $.messager.alert('提示消息', '操作成功');
+                        } else {
+                            query();
+                            $("#win").window('close');
+                            $.message.alert('错误消息', data.message);
+                        }
                     }
-                }
-            })
+                });
+            } else {
+                $.messager.alert('提示消息', '请选择一行进行操作');
+            }
         }
 
-        //新增的方法
-        function addForm() {
-            $('#zz').form('submit', {
-                url: '/addUser',
-                success: function (msg) {
-                    msg = JSON.parse(msg);
-                    if (msg.code == 1) {
-                        queryForm()
-                        $.messager.alert('提示消息', '新增成功');
-                        $("#z").window('close');
-                    } else {
-                        $.messager.alert('错误消息', msg.message);
-                    }
-                }
-            })
+        //重置表单数据
+        function reset() {
+            $('#fo').form('reset');
         }
 
-        //添加toolbar工具栏
-        // $(function () {
-        //     $("#dg").datagrid({
-        //         toolbar: [{
-        //             iconCls: 'icon-insert',
-        //             text: '新增',
-        //             //点击新增弹出一个新增的div窗口
-        //             onClick: function () {
-        //                 $("#z").window('open');
-        //             }
-        //         }, {
-        //             iconCls: 'icon-edit',
-        //             text: '修改',
-        //             onClick: function () {
-        //                 var selectedRow = $("#dg").datagrid("getSelected");
-        //                 if (selectedRow == null) {
-        //                     $.messager.alert('提示消息', '请选择数据');
-        //                     return;
-        //                 }
-        //                 $("#w").window('open');
-        //                 //带上原数据
-        //                 $("#ff").form('load', selectedRow)
-        //             }
-        //         }, {
-        //             iconCls: 'icon-remove',
-        //             text: '删除',
-        //             onClick: function () {
-        //
-        //                 var selectedRow = $("#dg").datagrid("getSelections");
-        //                 if (selectedRow == null) {
-        //                     $.messager.alert('提示消息', '请选择数据');
-        //                     return;
-        //                 }
-        //                 var falg;
-        //                 for (var i = 0; i < selectedRow.length; i++) {
-        //                     if (i == 0) {
-        //                         falg = (selectedRow[i].empno);
-        //                     } else {
-        //                         falg += "," + selectedRow[i].empno;
-        //                     }
-        //                 }
-        //
-        //                 //var sid=selectedRow.empno;
-        //                 $.ajax({
-        //                     url: 'deleteEmp/' + falg,
-        //                     method: 'POST',
-        //                     dataType: 'json',
-        //                     data: '_method=delete',
-        //                     success: function (msg) {
-        //                         if (msg.code == 1) {
-        //                             queryForm()
-        //                             $.messager.alert('提示消息', '删除成功');
-        //                         } else {
-        //                             $.messager.alert('错误消息', msg.message);
-        //                         }
-        //                     }
-        //                 });
-        //             }
-        //         }]
-        //     })
-        // })
-    </script>
-    <!--实现搜索框搜索点击事件和回车键查询,以及清空搜索框后列表恢复-->
-    <script>
+        <!--实现搜索框搜索点击事件和回车键查询,以及清空搜索框后列表恢复-->
         //弄了好久,终于可以了,propertychange是专门用来兼容ie的,这个是easyui的写法
         //这里就是只要输入框input的值发生变化,就立即触发就能很明确知道输入框的值是不是空
         $(function () {
@@ -287,32 +213,40 @@
             var value = $("#search").textbox('getText');
             //判断搜索框的值是否为空
             if (value == "" || value == null || value == undefined) {
-                value = '';
+                //通过这个可以请
+                $('#dg').datagrid('load', {
+                    //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
+                    //http://localhost:8888/queryUserList?username=xxx&page=1&rows=10
+                    //这里设置这个相当于拼接了一个参数去请求查询列表的接口
+                    username: ''
+                });
+            } else {
+                //解决后台获取数据乱码问题
+                var username = encodeURI(value);
+                //通过这个可以请
+                $('#dg').datagrid('load', {
+                    //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
+                    //http://localhost:8888/queryUserList?username=xxx&page=1&rows=10
+                    //这里设置这个相当于拼接了一个参数去请求查询列表的接口
+                    username: username
+                });
             }
-            //解决后台获取数据乱码问题
-            var username = encodeURI(value);
-            //通过这个可以请
-            $('#dg').datagrid('load', {
-                //easyui所有的方法调用-->控件对象.控件名称('方法名','方法参数')
-                //http://localhost:8888/queryUserList?username=xxx&page=1&rows=10
-                //这里设置这个相当于拼接了一个参数去请求查询列表的接口
-                username: username
-            });
         }
     </script>
 </head>
-<body class="easyui-panel" title="<center><b style='font-size: medium;color: #0E2D5F'>后台用户管理系统</b></center>"
-      data-options="fit:true">
+<body>
 <div class="easyui-layout" data-options="fit:true">
     <!------------------------------------------------------------------------------------------------------->
-    <div data-options="region:'north',border:false" style="height:35px;background:#B3DFDA;padding:5px;" align="right">
+    <div data-options="region:'north',border:false,split:true" style="height:75px;background:#B3DFDA;padding:3px;"
+         align="right">
+        <h2 align="center" style="color: blue;padding-bottom: 1px">用户管理后台系统</h2>
         <!--autocomplete="on" 用来控制刷新页面时,输入框里的值是否清除,off时会清除,on不会-->
         <!--data-options="prompt:'用户名'" 这个用来设置easyui情况的easyui-textbox的搜索框的提示,
         原始的那个在这里不生效-->
-        <input id="search" class="easyui-textbox" type="text" align="right" autocomplete="off"
+        <input id="search" class="easyui-textbox" type="text" align="center" autocomplete="off"
                data-options="prompt:'用户名'" iconCls="icon-search"
-               style="width: 130px;height: 30px;">
-        <a href="javascript:void(0)" style="width:50px;height: 30px" class="easyui-linkbutton"
+               style="width: 130px;height: 25px;">
+        <a href="javascript:void(0)" style="width:50px;height: 25px;" class="easyui-linkbutton"
            onclick="query()">搜索</a>
     </div>
     <!------------------------------------------------------------------------------------------------------->
@@ -363,29 +297,19 @@
                 tab2
             </div>
         </div>
-        <div id="win" class="easyui-window" title="新增用户信息" data-options="iconCls:'icon-save',closed:true"
-             style="width:500px;height:450px;padding:5px;background-color: #6b9cde">
+        <!--@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@-->
+        <div id="win" title="用户信息" style="width:500px;height:365px;padding:5px;background-color: #6b9cde">
             <form id="fo" method="post">
                 <table align="center" style="border-collapse:separate; border-spacing:0px 11px;">
+                    <!--设置隐藏的输入框获取id-->
+                    <tr>
+                        <td colspan="2"><input type="hidden" name="id" id="id"/></td>
+                    </tr>
                     <tr>
                         <td align="right"><label>用户名:</label></td>
                         <td align="center"><input name="username" id="username" type="text" class="easyui-validatebox"
                                                   data-options="required:true,validType:'length[1,20]'"
                                                   missingMessage="输入内容不能为空" invalidMessage="该内容不能超过20字"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="right"><label>密码:</label></td>
-                        <td align="center"><input name="password" id="pwd" type="password" class="easyui-validatebox"
-                                                  data-options="required:true,validType:'length[3,16]'"
-                                                  missingMessage="输入内容不能为空" invalidMessage="该内容只能3到16字"/>
-                        </td>
-                    </tr>
-                    <tr>
-                        <td align="right"><label>确认密码:</label></td>
-                        <td align="center"><input name="rePassword" id="rpwd" type="password" class="easyui-validatebox"
-                                                  data-options="required:true,validType:'length[3,16]'"
-                                                  missingMessage="输入内容不能为空" invalidMessage="该内容只能3到16字"/>
                         </td>
                     </tr>
                     <tr>
@@ -414,8 +338,7 @@
                         <td align="right"><label>用户类型:</label></td>
                         <td align="left">
                             <select id="from" type="text" name="from" class="easyui-combobox"
-                                    style="width: 100px;height: 30px"
-                                    panelHeight="auto">
+                                    style="width: 100px;height: 30px" panelHeight="auto">
                                 <option value="1">前台</option>
                                 <option value="2">后台</option>
                             </select>
@@ -425,30 +348,31 @@
             </form>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
             <div id="add-buttons" align="right" style="padding: 20px">
+                <a id="add" href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
+                   onclick="userAdd()">添加</a>
+                <a id="update" href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
+                   onclick="userUpdate()">保存</a>
                 <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
-                   onclick="addForm()">添加</a>
+                   onclick="reset()">重置</a>
                 <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
-                   onclick="clearAdd()">清空</a>
-                <a href="javascript:void(0)" class="easyui-linkbutton" style="background-color: #4b72a4"
-                   onclick="javascript:$('#win').dialog('close')">取消</a>
+                   onclick="javascript:$('#win').window('close')">取消</a>
             </div>
             <!--00000000000000000000000000000000000000000000000000000000000000000-->
+            <!--@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@-->
         </div>
     </div>
-    <!------------------------------------------------------------------------------------------------------->
 </div>
+<!--弹框代码-->
+<!------------------------------------------------------------------------------------------------------->
+</body>
 <script>
     //------------------------------------------------------------------
     $("#username").textbox({
         iconCls: 'icon-man',
         iconAlign: 'right'
     });
-    $("#pwd").textbox({
-        iconCls: 'icon-lock',
-        iconAlign: 'right'
-    });
-    $("#rpwd").textbox({
-        iconCls: 'icon-lock',
+    $("#headUrl").textbox({
+        iconCls: 'icon-head',
         iconAlign: 'right'
     });
     $("#department").textbox({
@@ -464,15 +388,12 @@
         iconAlign: 'right'
     });
     //------------------------------------------------------------------
-    $('#win').dialog({
-        title: '添加用户',
-        width: 500,
-        height: 425,
+    //注意如果使用了js来弹框,就不需要在标签那里设置class和其他的宽和高等信息,免得冲突(实测就因此被坑)
+    $('#win').window({
         iconCls: 'icon-save',
         closed: true,
         cache: false,
         modal: true
     });
 </script>
-</body>
 </html>
