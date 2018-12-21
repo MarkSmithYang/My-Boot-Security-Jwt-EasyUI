@@ -1,5 +1,6 @@
 package com.yb.boot.security.jwt.controller;
 
+import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.auth.tools.AntiViolenceCheckTools;
 import com.yb.boot.security.jwt.auth.tools.JwtTokenTools;
@@ -106,6 +107,18 @@ public class SecurityJwtController {
                                     @RequestParam(defaultValue = "") String username) {
         JSONObject result = securityJwtService.queryUserList(page, rows, username);
         return result;
+    }
+
+    //@PreAuthorize("isAuthenticated()")
+    @GetMapping("/findModules")
+    @ResponseBody
+    public JSONObject findModules(@RequestParam(defaultValue = "") @Length(max = 50, message = "父id节点参数过长") String id) {
+        //因为是在最开始查询出所有的数据,所以就不让其用id来获取数据请求数据库了
+        if (StringUtils.isBlank(id)) {
+            JSONArray result = securityJwtService.findModules(id);
+            return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
+        }
+        return null;
     }
 
     //@PreAuthorize("isAuthenticated()")

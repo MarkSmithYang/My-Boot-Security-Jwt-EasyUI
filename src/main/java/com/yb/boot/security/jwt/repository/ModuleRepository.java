@@ -3,6 +3,8 @@ package com.yb.boot.security.jwt.repository;
 import com.yb.boot.security.jwt.model.Module;
 import org.springframework.data.jpa.repository.JpaRepository;
 
+import java.util.List;
+
 /**
  * author yangbiao
  * Description:其实这个也是没有比较的直接在关联的用户或者权限获取,
@@ -11,4 +13,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
  */
 public interface ModuleRepository extends JpaRepository<Module,String> {
 
+    List<Module> findByParentId(String parentId);
 }

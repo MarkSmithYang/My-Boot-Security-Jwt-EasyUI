@@ -22,6 +22,11 @@ public class Module implements Serializable {
     private String id;
 
     /**
+     * 父模块id
+     */
+    private String parentId;
+
+    /**
      * 模块
      */
     @Column(unique = true)
@@ -104,6 +109,14 @@ public class Module implements Serializable {
 
     public void setId(String id) {
         this.id = id;
+    }
+
+    public String getParentId() {
+        return parentId;
+    }
+
+    public void setParentId(String parentId) {
+        this.parentId = parentId;
     }
 
     public String getModule() {

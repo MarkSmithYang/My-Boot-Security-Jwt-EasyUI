@@ -4,6 +4,9 @@ import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
+import com.yb.boot.security.jwt.model.Module;
+import com.yb.boot.security.jwt.model.Role;
+import com.yb.boot.security.jwt.repository.ModuleRepository;
 import com.yb.boot.security.jwt.repository.SysUserRepository;
 import com.yb.boot.security.jwt.request.AddUserModel;
 import com.yb.boot.security.jwt.request.UserRequest;
@@ -19,6 +22,7 @@ import com.yb.boot.security.jwt.utils.LoginUserUtils;
 import com.yb.boot.security.jwt.utils.RealIpGetUtils;
 import org.apache.commons.collections.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.hibernate.validator.constraints.Length;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +45,7 @@ import javax.validation.Valid;
 import java.io.Serializable;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 
 /**
  * Description:服务层代码
@@ -53,6 +58,8 @@ public class SecurityJwtService {
 
     @Autowired
     private JwtProperties jwtProperties;
+    @Autowired
+    private ModuleRepository moduleRepository;
     @Autowired
     private SysUserRepository sysUserRepository;
     @Autowired
@@ -243,6 +250,22 @@ public class SecurityJwtService {
                 jsonObject.put("department", s.getUserInfo() == null ? null : s.getUserInfo().getDepartment());
                 jsonObject.put("position", s.getUserInfo() == null ? null : s.getUserInfo().getPosition());
                 jsonObject.put("phone", s.getUserInfo() == null ? null : s.getUserInfo().getPhone());
+                //获取权限等信息
+                String role = "";
+                String modules = "";
+                String permission = "";
+                if (CollectionUtils.isNotEmpty(s.getRoles())) {
+                    role = s.getRoles().stream().map(a -> a.getRoleCn()).collect(Collectors.toSet()).toString();
+                }
+                jsonObject.put("role", role);
+                if (CollectionUtils.isNotEmpty(s.getModules())) {
+                    modules = s.getModules().stream().map(a -> a.getModuleCn()).collect(Collectors.toSet()).toString();
+                }
+                jsonObject.put("modules", modules);
+                if (CollectionUtils.isNotEmpty(s.getPermissions())) {
+                    permission = s.getPermissions().stream().map(a -> a.getPermissionCn()).collect(Collectors.toSet()).toString();
+                }
+                jsonObject.put("permission", permission);
                 //翻译from为中文展示
                 if (CommonDic.FROM_FRONT.equals(s.getUserFrom())) {
                     jsonObject.put("from", "前台");
@@ -276,7 +299,7 @@ public class SecurityJwtService {
     @Transactional(rollbackFor = Exception.class)
     public void updateUser(@Valid AddUserModel addUserModel) {
         //判断id是否为空(因为添加的时候前端是不会传id的,所以没有非空判断)
-        if(StringUtils.isBlank(addUserModel.getId())){
+        if (StringUtils.isBlank(addUserModel.getId())) {
             log.info("编辑(修改)数据的id为空");
             ParameterErrorException.message("操作失败");
         }
@@ -312,4 +335,60 @@ public class SecurityJwtService {
         }
     }
 
+    /**
+     * 查询模块(菜单)列表
+     */
+    public JSONArray findModules(String parentId) {
+        JSONArray childs = new JSONArray();
+        //判断父节点id是否为空
+        if (StringUtils.isNotBlank(parentId)) {
+            //通过父节点查询数据
+            List<Module> list = moduleRepository.findByParentId(parentId);
+            //封装成要求的json数据
+            if (CollectionUtils.isNotEmpty(list)) {
+                list.forEach(s -> {
+                    JSONObject jsonObject = new JSONObject();
+                    jsonObject.put("id", s.getId());
+                    jsonObject.put("state", "closed");
+                    jsonObject.put("text", s.getModuleCn());
+                    //把子模块信息封装到数组--子模块的子模块还是通过接口来查询
+                    childs.add(jsonObject);
+                    //调用递归依次封装子模块
+                    JSONArray modules = findModules(s.getId());
+                    //把子模块数据进行封装
+                    if (modules != null && modules.size() > 0) {
+                        jsonObject.put("children", modules);
+                    }
+                });
+            }
+            return childs;
+        } else {
+            //如果父节点为空,说明是查询所有的模块信息,这里做的是只查询最高父节点的子节点,
+            //字节点需要点击去查询其字节点,最顶模块在数据字典里指定,这样方便处理
+            Optional<Module> byId = moduleRepository.findById(CommonDic.FROM_BACK);
+            //获取最顶的模块的信息
+            Module module = byId.isPresent() ? byId.get() : null;
+            //判断模块时候是否存在
+            if (module != null) {
+                //采用递归获取数据,避免多于的代码和数据库请求和处理
+                JSONArray modules = findModules(module.getId());
+                //封装根节点模块的信息(设定为一个根节点)
+                JSONArray array = new JSONArray();
+                JSONObject jsonObject = new JSONObject();
+                jsonObject.put("id", module.getId());
+                jsonObject.put("state", "open");
+                jsonObject.put("text", module.getModuleCn());
+                //如果没有子模块就不封装了
+                if (modules != null && modules.size() > 0) {
+                    jsonObject.put("children", modules);
+                }
+                //封装数据并返回
+                array.add(jsonObject);
+                return array;
+            } else {
+                log.info("通过最顶模块的id查询出的模块为空");
+                return null;
+            }
+        }
+    }
 }
