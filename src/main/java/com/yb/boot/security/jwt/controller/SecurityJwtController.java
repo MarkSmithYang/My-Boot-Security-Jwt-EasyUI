@@ -109,16 +109,12 @@ public class SecurityJwtController {
         return result;
     }
 
-    //@PreAuthorize("isAuthenticated()")
+    @PreAuthorize("hasAuthority('ROLE_admin')")
     @GetMapping("/findModules")
     @ResponseBody
     public JSONObject findModules(@RequestParam(defaultValue = "") @Length(max = 50, message = "父id节点参数过长") String id) {
-        //因为是在最开始查询出所有的数据,所以就不让其用id来获取数据请求数据库了
-        if (StringUtils.isBlank(id)) {
-            JSONArray result = securityJwtService.findModules(id);
-            return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
-        }
-        return null;
+        JSONArray result = securityJwtService.findModules(id);
+        return (JSONObject) JSONObject.toJSON(ResultInfo.success(result));
     }
 
     //@PreAuthorize("isAuthenticated()")
@@ -129,6 +125,7 @@ public class SecurityJwtController {
         return (JSONObject) JSONObject.toJSON(ResultInfo.success("操作成功"));
     }
 
+    @PreAuthorize("hasAuthority('update')")
     @PostMapping("/updateUser")
     @ResponseBody
     public JSONObject updateUser(@Valid AddUserModel addUserModel) {
