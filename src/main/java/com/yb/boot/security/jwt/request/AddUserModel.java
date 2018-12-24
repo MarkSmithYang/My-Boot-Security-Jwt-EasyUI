@@ -4,10 +4,6 @@ import com.yb.boot.security.jwt.common.CommonDic;
 import com.yb.boot.security.jwt.exception.ParameterErrorException;
 import org.apache.commons.lang3.StringUtils;
 import org.hibernate.validator.constraints.Length;
-
-import javax.persistence.Basic;
-import javax.persistence.FetchType;
-import javax.persistence.Lob;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.Pattern;
 

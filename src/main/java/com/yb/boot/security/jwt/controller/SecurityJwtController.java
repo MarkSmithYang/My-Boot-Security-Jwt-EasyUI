@@ -3,18 +3,13 @@ package com.yb.boot.security.jwt.controller;
 import com.alibaba.fastjson.JSONArray;
 import com.alibaba.fastjson.JSONObject;
 import com.yb.boot.security.jwt.auth.tools.AntiViolenceCheckTools;
-import com.yb.boot.security.jwt.auth.tools.JwtTokenTools;
 import com.yb.boot.security.jwt.common.CommonDic;
-import com.yb.boot.security.jwt.common.JwtProperties;
 import com.yb.boot.security.jwt.common.ResultInfo;
 import com.yb.boot.security.jwt.model.SysUser;
 import com.yb.boot.security.jwt.request.AddUserModel;
-import com.yb.boot.security.jwt.request.RefreshToken;
 import com.yb.boot.security.jwt.request.UserRequest;
 import com.yb.boot.security.jwt.response.JwtToken;
-import com.yb.boot.security.jwt.response.UserDetailsInfo;
 import com.yb.boot.security.jwt.service.SecurityJwtService;
-import com.yb.boot.security.jwt.utils.LoginUserUtils;
 import com.yb.boot.security.jwt.utils.RealIpGetUtils;
 import com.yb.boot.security.jwt.utils.VerifyCodeUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -32,15 +27,12 @@ import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
-
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.validation.Valid;
 import javax.validation.constraints.NotBlank;
 import java.io.IOException;
 import java.io.Serializable;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -67,18 +59,18 @@ public class SecurityJwtController {
 
     @GetMapping("/toLogin")
     public String toLogin() {
-        return "/login";
+        return "login";
     }
 
     @GetMapping("/loginBack")
     public String loginBack() {
-        return "/loginBack";
+        return "loginBack";
     }
 
     @PreAuthorize("isAuthenticated()")
     @GetMapping("/index")
     public String index() {
-        return "/index";
+        return "index";
     }
 
     //如果想要走自己写的登出接口,接口不能为/logout,这个默认会走配置那里的.logout()--配置已删除
@@ -159,7 +151,7 @@ public class SecurityJwtController {
                              HttpServletResponse response) {
         getJwtTokenResultInfo(userRequest, request, response, CommonDic.FROM_FRONT);
         //登录成功之后跳转
-        return "/index";
+        return "index";
     }
 
     @PostMapping("/backLogin")
@@ -170,7 +162,7 @@ public class SecurityJwtController {
         String accessToken = data.getAccessToken();
         model.addAttribute("token", accessToken);
         //登录成功之后跳转
-        return "/layout";
+        return "layout";
     }
 
     /**
