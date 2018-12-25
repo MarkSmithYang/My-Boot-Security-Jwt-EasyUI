@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.ModelAndView;
 import org.thymeleaf.exceptions.TemplateInputException;
 
 import javax.validation.ConstraintViolation;
@@ -47,11 +48,13 @@ public class GlobalExceptionHandler {
 
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(ParameterErrorException.class)
-    public ResultInfo parameterErrorExceptionHandler(ParameterErrorException e) {
+    public ModelAndView parameterErrorExceptionHandler(ParameterErrorException e) {
         //这里的获取到的信息就是自定义的信息,因为父类的信息被覆盖了
         log.info(e.getMessage());
-        return ResultInfo.status(HttpStatus.BAD_REQUEST.value())
-                .message(e.getMessage());
+        ModelAndView view = new ModelAndView("error");
+        view.addObject("status", HttpStatus.BAD_REQUEST);
+        view.addObject("message", e.getMessage());
+        return view;
     }
 
     @ResponseStatus(HttpStatus.FORBIDDEN)
@@ -96,11 +99,13 @@ public class GlobalExceptionHandler {
      */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(RuntimeException.class)
-    public ResultInfo runtimeExceptionHandler(RuntimeException e) {
+    public ModelAndView runtimeExceptionHandler(RuntimeException e) {
         log.info("运行时异常:" + e.getMessage());
         //处理因为表单提交而不是json对象提交参数校验失败的情况
-        return ResultInfo.status(HttpStatus.BAD_REQUEST.value())
-                .message("网络异常");
+        ModelAndView view = new ModelAndView("error");
+        view.addObject("status", HttpStatus.BAD_REQUEST);
+        view.addObject("message", "网络异常");
+        return view;
     }
 
     /**
@@ -108,14 +113,17 @@ public class GlobalExceptionHandler {
      */
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     @ExceptionHandler(Exception.class)
-    public ResultInfo exceptionHandler(Exception e) {
+    public ModelAndView exceptionHandler(Exception e) {
         log.info("Exception异常:" + e.getMessage());
+        ModelAndView view = new ModelAndView("error");
+        view.addObject("status", HttpStatus.BAD_REQUEST);
+        //处理逻辑
         if (StringUtils.isBlank(e.getMessage())) {
-            return ResultInfo.status(HttpStatus.BAD_REQUEST.value())
-                    .message("网络异常");
+            view.addObject("message", "网络异常");
+            return view;
         }
-        return ResultInfo.status(HttpStatus.BAD_REQUEST.value())
-                .message(getErrorMessage(e.getMessage()));
+        view.addObject("message", getErrorMessage(e.getMessage()));
+        return view;
     }
 
     /**
