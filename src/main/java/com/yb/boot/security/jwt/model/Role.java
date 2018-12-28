@@ -2,6 +2,9 @@ package com.yb.boot.security.jwt.model;
 
 import org.apache.commons.lang3.builder.EqualsBuilder;
 import org.apache.commons.lang3.builder.HashCodeBuilder;
+import org.hibernate.annotations.DynamicInsert;
+import org.hibernate.annotations.DynamicUpdate;
+
 import javax.persistence.*;
 import java.io.Serializable;
 import java.util.HashSet;
@@ -15,6 +18,10 @@ import java.util.UUID;
  */
 @Entity
 @Table//这里就使用默认的映射策略
+//默认是true,更新的时候只更新修改的那个字段,而不是更新整个表的字段信息,
+//从sql就可以看出,性能可以提高很多,插入也是一样的道理
+@DynamicUpdate
+@DynamicInsert
 public class Role implements Serializable {
     private static final long serialVersionUID = -1424025425731168559L;
 
