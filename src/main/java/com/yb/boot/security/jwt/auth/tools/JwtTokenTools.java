@@ -26,6 +26,44 @@ import java.util.*;
 public class JwtTokenTools {
     public static final Logger log = LoggerFactory.getLogger(JwtTokenTools.class);
 
+    /**
+     * 简易版生成token方法,这个就是不需要封装不敏感信息给前端,而且不添加一些额外的标准校验
+     * 这个就是基础的生成jwt的方法
+     */
+    private static String getToken() {
+        String token = Jwts.builder()
+                .setExpiration(new Date(System.currentTimeMillis() + 30 * 60 * 1000))
+                //printXXX 的函数就是encode，parseXXX 的函数就是decode,
+                // 比如,String printBase64Binary(byte[])就是将字节数组做base64编码,
+                // byte[] parseBase64Binary(String) 就是将Base64编码后的String还原成字节数组
+                .signWith(SignatureAlgorithm.HS512, DatatypeConverter.printBase64Binary("秘钥".getBytes()))
+                .compact();
+        return token;
+    }
+
+    /**
+     * 通过调用此方法来验证传递过来的token的合法性,返回null就是解析错误
+     */
+    private static Claims checkToken(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .setSigningKey(DatatypeConverter.parseBase64Binary("经DatatypeConverter编码后的秘钥"))
+                    .parseClaimsJws(token)
+                    .getBody();
+            return claims;
+            //通过以下的方式即可获取到token的荷载信息,解析这里根本不需要通过Claims去获取信息,麻烦,
+            //而且前端也可以自己来解析获取荷载信息
+            //解析jwt并获取用户详细信息
+            //String[] split = token.split("\\.");
+            //如果token切割的split数组长度不为3,说明token不正确(防止抛出异常)
+            //String claims = new String(Base64Utils.decodeFromUrlSafeString(split.length == 3 ? split[1] : ""));
+            //解析字符串获取用户详细信息对象
+            //UserDetailsInfo detailsInfo = JSONObject.parseObject(claims, UserDetailsInfo.class);
+        } catch (Exception e) {
+            log.info("解析token错误异常:" + e.getMessage());
+            return null;
+        }
+    }
 
     /**
      * 生成jwt令牌
