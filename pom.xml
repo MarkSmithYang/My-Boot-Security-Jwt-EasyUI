@@ -91,7 +91,7 @@
         <dependency>
             <groupId>mysql</groupId>
             <artifactId>mysql-connector-java</artifactId>
-            <version>5.1.47</version>
+            <version>8.0.16</version>
         </dependency>
         <!--swagger的依赖,swagger本身不支持spring mvc的,springfox把swagger包装了一下,让他可以支持springmvc-->
         <!--因为是前后端在一起的,所以swagger在这这里没有了意义,所以去掉了-->
